@@ -33,10 +33,14 @@ export type ProSearchStreamItem = {
 
 export type PPXClient = InstanceType<typeof Perplexity>
 
-export function createPerplexityClient(apiKey?: string): PPXClient {
-  const resolvedKey = apiKey ?? (globalThis as unknown as { PERPLEXITY_API_KEY?: string }).PERPLEXITY_API_KEY
-  if (!resolvedKey) throw new Error('Missing Perplexity API key. Set PERPLEXITY_API_KEY on globalThis.')
-  return new Perplexity({ apiKey: resolvedKey })
+export function createPerplexityClient(overrideApiKey?: string): PPXClient {
+  const apiKey = overrideApiKey ?? import.meta.env.VITE_PERPLEXITY_API_KEY
+  if (!apiKey || typeof apiKey !== 'string') {
+    throw new Error(
+      'VITE_PERPLEXITY_API_KEY is missing. Create a .env.local file in the project root with:\nVITE_PERPLEXITY_API_KEY=<your_api_key>\nThen restart the dev server.'
+    )
+  }
+  return new Perplexity({ apiKey })
 }
 
 export type StreamProSearchParams = {

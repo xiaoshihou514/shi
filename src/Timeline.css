@@ -147,7 +147,7 @@
     font-weight: 500;
 }
 
-/* 响应式设计 */
+/* Responsive design */
 @media (max-width: 768px) {
     .timeline::before {
         left: 30px;
@@ -176,7 +176,7 @@
     }
 }
 
-/* 加载动画 */
+/* Loading animation */
 @keyframes fadeInUp {
     from {
         opacity: 0;

@@ -5,15 +5,6 @@
 
 Utilities for Pro Search with Sonar Pro live in `src/PPX.ts`.
 
-### Set your API key
-
-The client reads the key from `globalThis.PERPLEXITY_API_KEY`.
-
-```ts
-// Set once at app startup (before calling the helpers)
-globalThis.PERPLEXITY_API_KEY = 'YOUR_API_KEY_HERE'
-```
-
 ### Stream tokens (async generator)
 
 ```ts

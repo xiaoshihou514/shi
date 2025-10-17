@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import './Timeline.css';
 
-// 事件类型定义
+// Event type definitions
 export interface TimelineEvent {
     id: string;
     date: string;
@@ -34,7 +34,7 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
     const timelineRef = useRef<HTMLDivElement>(null);
     const observerRef = useRef<IntersectionObserver | null>(null);
 
-    // 暴露方法给 ref
+    // Expose methods to ref
     useImperativeHandle(ref, () => ({
         addEvent: (event: TimelineEvent) => {
             setEvents(prev => {
@@ -54,7 +54,7 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
         }
     }));
 
-    // 处理新事件的添加
+    // Handle addition of new events
     useEffect(() => {
         setEvents(prev => {
             const existingIds = new Set(prev.map(event => event.id));
@@ -67,7 +67,7 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
         });
     }, [initialEvents]);
 
-    // 设置 Intersection Observer 来检测元素是否可见
+    // Set up Intersection Observer to detect element visibility
     useEffect(() => {
         if (!timelineRef.current) return;
 
@@ -98,10 +98,10 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
         };
     }, [events]);
 
-    // 格式化日期显示
+    // Format date display
     const formatDate = (dateString: string): string => {
         const date = new Date(dateString);
-        return date.toLocaleDateString('zh-CN', {
+        return date.toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',
             day: 'numeric'
@@ -148,7 +148,7 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
                                         className="timeline-button"
                                         onClick={() => onEventClick(event)}
                                     >
-                                        查看详情
+                                        View Details
                                     </button>
                                 )}
                             </div>
@@ -159,7 +159,7 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
                 {events.length === 0 && (
                     <div className="timeline-empty">
                         <div className="empty-icon">⏳</div>
-                        <div className="empty-text">等待事件数据...</div>
+                        <div className="empty-text">Waiting for event data...</div>
                     </div>
                 )}
             </div>
