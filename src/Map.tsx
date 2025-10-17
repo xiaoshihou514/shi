@@ -162,7 +162,7 @@ export default function ClickableMap(): React.ReactElement {
     }, [city, buildPrompt, tryParseEvents]);
 
     return (
-        <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
+        <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
             <div style={panelStyle}>
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>Selection</div>
                 {clicked ? (
@@ -204,7 +204,7 @@ export default function ClickableMap(): React.ReactElement {
                     latitude: 40,
                     zoom: 3.5
                   }}
-                  style={{width: 600, height: 400}}
+                  style={{ width: '100%', height: '100%' }}
                   mapStyle={MAP_STYLE}
                 onClick={onMapClick}
             >
