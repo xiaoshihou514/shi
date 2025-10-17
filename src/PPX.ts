@@ -1,6 +1,4 @@
-// utils for calling perplexity apis
-
-import Perplexity from '@perplexity-ai/perplexity_ai'
+// utils for calling perplexity apis via local dev proxy (avoids browser CORS)
 
 export type ProSearchStreamItem = {
   content?: string
@@ -31,17 +29,7 @@ export type ProSearchStreamItem = {
   raw?: unknown
 }
 
-export type PPXClient = InstanceType<typeof Perplexity>
-
-export function createPerplexityClient(overrideApiKey?: string): PPXClient {
-  const apiKey = overrideApiKey ?? import.meta.env.VITE_PERPLEXITY_API_KEY
-  if (!apiKey || typeof apiKey !== 'string') {
-    throw new Error(
-      'VITE_PERPLEXITY_API_KEY is missing. Create a .env.local file in the project root with:\nVITE_PERPLEXITY_API_KEY=<your_api_key>\nThen restart the dev server.'
-    )
-  }
-  return new Perplexity({ apiKey })
-}
+// Note: No direct SDK usage in the browser. Calls are proxied to `/api/ppx/chat`.
 
 export type StreamProSearchParams = {
   prompt?: string
@@ -58,48 +46,9 @@ export type StreamProSearchParams = {
 export async function* streamProSearch(
   params: StreamProSearchParams
 ): AsyncGenerator<ProSearchStreamItem> {
-  const {
-    prompt,
-    messages,
-    apiKey,
-    model = 'sonar-pro',
-    temperature,
-    searchType = 'pro',
-    searchContextSize,
-  } = params
-
-  const client = createPerplexityClient(apiKey)
-
-  const msgs = messages ?? (prompt ? [{ role: 'user' as const, content: prompt }] : [])
-  if (msgs.length === 0) {
-    throw new Error('Provide either prompt or messages')
-  }
-
-  const response = await client.chat.completions.create({
-    model,
-    messages: msgs,
-    stream: true,
-    temperature,
-    web_search_options: {
-      search_type: searchType,
-      search_context_size: searchContextSize,
-    },
-    // request full stream (includes usage/info events)
-    stream_mode: 'full',
-  })
-
-  // SDK returns an async iterable of chunks
-  for await (const chunk of response as AsyncIterable<Perplexity.StreamChunk> as unknown as AsyncIterable<Perplexity.StreamChunk>) {
-    const delta = chunk?.choices?.[0]?.delta
-    // content can be a string or a structured array; handle string primarily
-    const content: string | undefined = typeof delta?.content === 'string' ? delta.content : undefined
-    yield {
-      content,
-      usage: chunk?.usage ?? null,
-      searchResults: chunk?.search_results ?? null,
-      raw: chunk,
-    }
-  }
+  // Non-stream fallback in browser: call one-shot and yield once
+  const { text, usage, searchResults } = await proSearchText(params)
+  yield { content: text, usage, searchResults }
 }
 
 export type StreamToCallbacksParams = StreamProSearchParams & {
@@ -122,15 +71,47 @@ export async function proSearchText(params: StreamProSearchParams): Promise<{
   usage: ProSearchStreamItem['usage']
   searchResults: ProSearchStreamItem['searchResults']
 }> {
-  let text = ''
-  let usage: ProSearchStreamItem['usage'] = null
-  let searchResults: ProSearchStreamItem['searchResults'] = null
-  for await (const item of streamProSearch(params)) {
-    if (item.content) text += item.content
-    if (item.usage) usage = item.usage
-    if (item.searchResults) searchResults = item.searchResults
+  const {
+    prompt,
+    messages,
+    model = 'sonar-pro',
+    temperature,
+    searchType = 'pro',
+    searchContextSize,
+  } = params
+
+  const payload = {
+    prompt,
+    messages,
+    model,
+    temperature,
+    searchType,
+    searchContextSize,
   }
-  return { text, usage, searchResults }
+
+  const resp = await fetch('/api/ppx/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!resp.ok) {
+    const msg = await safeReadText(resp)
+    throw new Error(msg || `PPX request failed: HTTP ${resp.status}`)
+  }
+  const data = await resp.json().catch(() => ({})) as {
+    text?: string
+    usage?: ProSearchStreamItem['usage']
+    searchResults?: ProSearchStreamItem['searchResults']
+  }
+  return {
+    text: typeof data.text === 'string' ? data.text : '',
+    usage: data.usage ?? null,
+    searchResults: data.searchResults ?? null,
+  }
+}
+
+async function safeReadText(resp: Response): Promise<string> {
+  try { return await resp.text() } catch { return '' }
 }
 
 // Minimal example usage:

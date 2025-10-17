@@ -1,5 +1,5 @@
 // A beautiful, clickable map, propogates user clicks as coord upwards
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Map as MLMap, Marker, NavigationControl } from '@vis.gl/react-maplibre';
 import type { MapLayerMouseEvent } from 'maplibre-gl';
 import Timeline, { type TimelineEvent, type TimelineHandle } from './Timeline';
@@ -38,11 +38,6 @@ export default function ClickableMap(): React.ReactElement {
     const timelineRef = useRef<TimelineHandle>(null);
     const [ppxLoading, setPpxLoading] = useState<boolean>(false);
     const [ppxError, setPpxError] = useState<string | null>(null);
-
-    const initialViewState = useMemo(
-        () => ({ longitude: -100, latitude: 40, zoom: 3.5 }),
-        []
-    );
 
     const reverseGeocode = useCallback(async (lat: number, lon: number) => {
         abortRef.current?.abort();
