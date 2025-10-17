@@ -1,0 +1,197 @@
+.timeline-container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.timeline {
+    position: relative;
+    padding: 40px 0;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(to bottom, #3498db, #9b59b6);
+    transform: translateX(-50%);
+    border-radius: 2px;
+}
+
+.timeline-event {
+    position: relative;
+    margin-bottom: 60px;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.6s ease;
+    width: 100%;
+}
+
+.timeline-event.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.timeline-event.left {
+    padding-right: 50%;
+}
+
+.timeline-event.right {
+    padding-left: 50%;
+}
+
+.timeline-event.left .timeline-content {
+    text-align: right;
+    padding-right: 40px;
+}
+
+.timeline-event.right .timeline-content {
+    text-align: left;
+    padding-left: 40px;
+}
+
+.timeline-content {
+    position: relative;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e1e8ed;
+    transition: all 0.3s ease;
+}
+
+.timeline-content:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+}
+
+.timeline-icon {
+    position: absolute;
+    top: 20px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+    z-index: 2;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.timeline-event.left .timeline-icon {
+    right: -75px;
+}
+
+.timeline-event.right .timeline-icon {
+    left: -75px;
+}
+
+.timeline-date {
+    font-size: 14px;
+    color: #7f8c8d;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.timeline-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 12px;
+    line-height: 1.3;
+}
+
+.timeline-description {
+    font-size: 14px;
+    color: #5d6d7e;
+    line-height: 1.5;
+    margin-bottom: 15px;
+}
+
+.timeline-button {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.timeline-button:hover {
+    background: linear-gradient(135deg, #2980b9, #21618c);
+    transform: translateY(-1px);
+}
+
+.timeline-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: #7f8c8d;
+}
+
+.empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.empty-text {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .timeline::before {
+        left: 30px;
+    }
+
+    .timeline-event {
+        padding-left: 80px !important;
+        padding-right: 20px !important;
+    }
+
+    .timeline-event.left .timeline-content,
+    .timeline-event.right .timeline-content {
+        text-align: left;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .timeline-event.left .timeline-icon,
+    .timeline-event.right .timeline-icon {
+        left: -60px;
+        right: auto;
+    }
+
+    .timeline-content {
+        padding: 15px;
+    }
+}
+
+/* 加载动画 */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.timeline-event.visible:nth-child(odd) {
+    animation: fadeInUp 0.6s ease forwards;
+}
+
+.timeline-event.visible:nth-child(even) {
+    animation: fadeInUp 0.6s 0.2s ease forwards;
+}
