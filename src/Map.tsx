@@ -208,7 +208,7 @@ export default function ClickableMap(): React.ReactElement {
                     latitude: 40,
                     zoom: 3.5
                   }}
-                  style={{ width: '100%', height: '100%' }}
+                  style={{ width: 1920, height: 1081 }}
                   mapStyle={MAP_STYLE}
                 onClick={onMapClick}
             >
