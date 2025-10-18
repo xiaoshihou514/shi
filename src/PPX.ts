@@ -238,3 +238,106 @@ async function safeReadText(resp: Response): Promise<string> {
 //   searchType: 'pro',
 //   onToken: (t) => console.log(t),
 // })
+
+// ------------------------
+// Person Life Path helpers
+// ------------------------
+
+export type SourceRef = {
+    title: string
+    url: string
+}
+
+export type LifeHop = {
+    city: string
+    startDate?: string
+    endDate?: string
+    description?: string
+    sources?: SourceRef[]
+}
+
+function normalizeDateLike(input: unknown): string | undefined {
+    if (typeof input !== 'string') return undefined;
+    const v = input.trim();
+    if (!v) return undefined;
+    // Accept YYYY, YYYY-MM, YYYY-MM-DD — do not force ISO; UI can display raw
+    // Validate basic pattern
+    const ok = /^(\d{4})(-(0[1-9]|1[0-2]))?(-(0[1-9]|[12]\d|3[01]))?$/.test(v);
+    return ok ? v : undefined;
+}
+
+function takeFirstJsonArray(text: string): unknown[] | null {
+    try {
+        const parsed = JSON.parse(text);
+        if (Array.isArray(parsed)) return parsed as unknown[];
+    } catch { /* fallthrough */ }
+    const a = text.indexOf('[');
+    const b = text.lastIndexOf(']');
+    if (a !== -1 && b !== -1 && b > a) {
+        try {
+            const parsed = JSON.parse(text.slice(a, b + 1));
+            if (Array.isArray(parsed)) return parsed as unknown[];
+        } catch { /* ignore */ }
+    }
+    return null;
+}
+
+function coerceLifeHops(rawArr: unknown[]): LifeHop[] {
+    const hops: LifeHop[] = [];
+    for (const it of rawArr) {
+        const obj = (it ?? {}) as Record<string, unknown>;
+        const cityRaw = obj['city'];
+        const startRaw = obj['start_date'] ?? obj['startDate'];
+        const endRaw = obj['end_date'] ?? obj['endDate'];
+        const descRaw = obj['description'] ?? obj['summary'] ?? obj['activity'];
+        const sourcesRaw = obj['sources'];
+        const city = typeof cityRaw === 'string' ? cityRaw.trim() : '';
+        if (!city) continue;
+        const hop: LifeHop = {
+            city,
+            startDate: normalizeDateLike(startRaw),
+            endDate: normalizeDateLike(endRaw),
+            description: typeof descRaw === 'string' ? descRaw.trim() : undefined,
+            sources: Array.isArray(sourcesRaw)
+                ? (sourcesRaw as unknown[]).map((s) => {
+                      const so = (s ?? {}) as Record<string, unknown>;
+                      const title = typeof so['title'] === 'string' ? so['title'].trim() : '';
+                      const url = typeof so['url'] === 'string' ? so['url'].trim() : '';
+                      return (title || url) ? { title, url } : null;
+                  }).filter(Boolean) as SourceRef[]
+                : undefined,
+        };
+        hops.push(hop);
+    }
+    // Remove consecutive duplicates (case-insensitive, trimmed)
+    const dedup: LifeHop[] = [];
+    for (const h of hops) {
+        const prev = dedup[dedup.length - 1];
+        if (prev && prev.city.trim().toLowerCase() === h.city.trim().toLowerCase()) continue;
+        dedup.push(h);
+    }
+    return dedup;
+}
+
+export async function fetchPersonLifePath(personName: string, signal?: AbortSignal): Promise<LifeHop[]> {
+    const name = (personName ?? '').trim();
+    if (!name) return [];
+    const prompt = [
+        `Task: Output a chronological sequence of major city-to-city moves for the famous person below.`,
+        `Return STRICT JSON only: an array where each item is {` +
+            `"city": string (in format cityname, regionname, countryname), "start_date": string|null, "end_date": string|null, "description": string (1-2 sentences),` +
+            `"sources"?: [{"title": string, "url": string}] }`,
+        `Rules:`,
+        `- City names must be in English.`,
+        `- No consecutive duplicate cities (allow revisits later in the array).`,
+        `- Include major relocations or multi-year stays or birth cities and death cities; omit trivial short trips.`,
+        `- Dates may be YYYY or YYYY-MM or YYYY-MM-DD when precise; use null if unknown.`,
+        `- Keep it concise (10-15 hops).`,
+        `Person: ${name}`
+    ].join('\n');
+
+    const { text } = await proSearchText({ prompt, searchType: 'pro', signal });
+    const arr = takeFirstJsonArray(text);
+    if (!arr) return [];
+    return coerceLifeHops(arr);
+}
