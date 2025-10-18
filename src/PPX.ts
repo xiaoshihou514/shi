@@ -110,6 +110,14 @@ export async function proSearchText(params: StreamProSearchParams): Promise<{
   }
 }
 
+export async function normalSearchText(params: StreamProSearchParams): Promise<{
+  text: string
+  usage: ProSearchStreamItem['usage']
+  searchResults: ProSearchStreamItem['searchResults']
+}> {
+  return proSearchText({ ...params, searchType: 'fast' })
+}
+
 async function safeReadText(resp: Response): Promise<string> {
   try { return await resp.text() } catch { return '' }
 }
