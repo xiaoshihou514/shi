@@ -35,6 +35,29 @@ const CATEGORY_COLORS: Record<string, [number, number, number]> = {
     facts: [108, 117, 125], // gray
 };
 
+const LOADER_OUTER_STYLE: React.CSSProperties = {
+    width: 48,
+    height: 48,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'rgba(253, 224, 71, 0.85)',
+    boxShadow: '0 0 18px rgba(253, 224, 71, 0.9)',
+    animation: 'jumplines-glow 1.6s ease-in-out infinite',
+    pointerEvents: 'none',
+};
+
+const LOADER_INNER_STYLE: React.CSSProperties = {
+    width: 24,
+    height: 24,
+    borderRadius: '50%',
+    border: '3px solid rgba(253, 224, 71, 0.45)',
+    borderTopColor: '#fde047',
+    animation: 'jumplines-spin 0.9s linear infinite',
+    boxSizing: 'border-box',
+};
+
 export default function Jumplines(props: Props): React.ReactElement | null {
     const {origin, cityName, autoZoom = true} = props;
     const overlay = useControl(() => new MapboxOverlay({interleaved: true}));
@@ -45,6 +68,7 @@ export default function Jumplines(props: Props): React.ReactElement | null {
     const abortRef = useRef<AbortController | null>(null);
     const [autoZoomActive, setAutoZoomActive] = useState<boolean>(autoZoom);
     const [selected, setSelected] = useState<JumpDatum | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
     // removed translate overlay/JSON; unified findCityWithPPX provides English output
 
     const colorByCategory = useCallback((c?: string): [number, number, number] => {
@@ -58,6 +82,26 @@ export default function Jumplines(props: Props): React.ReactElement | null {
         const tick = (t: number) => { setTime(((t - start) / 1000) % 10); raf = requestAnimationFrame(tick); };
         raf = requestAnimationFrame(tick);
         return () => cancelAnimationFrame(raf);
+    }, []);
+
+    useEffect(() => {
+        if (typeof document === 'undefined') return;
+        const styleId = 'jumplines-loading-animations';
+        if (document.getElementById(styleId)) return;
+        const styleEl = document.createElement('style');
+        styleEl.id = styleId;
+        styleEl.textContent = `
+            @keyframes jumplines-glow {
+                0% { box-shadow: 0 0 6px rgba(253, 224, 71, 0.45); transform: scale(0.95); }
+                50% { box-shadow: 0 0 22px rgba(253, 224, 71, 1); transform: scale(1.08); }
+                100% { box-shadow: 0 0 6px rgba(253, 224, 71, 0.45); transform: scale(0.95); }
+            }
+            @keyframes jumplines-spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(styleEl);
     }, []);
 
     const pathWithTimestamps = useCallback((src: [number, number], dst: [number, number]) => {
@@ -111,9 +155,16 @@ export default function Jumplines(props: Props): React.ReactElement | null {
     useEffect(() => {
         abortRef.current?.abort();
         setJumps([]);
-        if (!origin || !cityName) return;
+        setSelected(null);
+        if (!origin || !cityName) {
+            setIsLoading(false);
+            abortRef.current = null;
+            return;
+        }
         const ctrl = new AbortController();
         abortRef.current = ctrl;
+        setIsLoading(true);
+        let isActive = true;
 
         (async () => {
             try {
@@ -147,15 +198,28 @@ export default function Jumplines(props: Props): React.ReactElement | null {
                 }));
 
                 if (!ctrl.signal.aborted) setJumps(out);
-                setSelected(null);
             } catch (e) {
-                if (ctrl.signal.aborted) return;
-                // Swallow errors; overlay will remain empty
-                console.warn('Jumplines failed', e);
+                if (!ctrl.signal.aborted) {
+                    // Swallow errors; overlay will remain empty
+                    console.warn('Jumplines failed', e);
+                }
+            } finally {
+                if (isActive) {
+                    setIsLoading(false);
+                    if (abortRef.current === ctrl) {
+                        abortRef.current = null;
+                    }
+                }
             }
         })();
 
-        return () => ctrl.abort();
+        return () => {
+            isActive = false;
+            if (abortRef.current === ctrl) {
+                abortRef.current = null;
+            }
+            ctrl.abort();
+        };
     }, [origin, cityName, parseCityList, geocodeCity]);
 
     // Build layers and apply overlay
@@ -292,6 +356,18 @@ export default function Jumplines(props: Props): React.ReactElement | null {
     // Render destination markers; origin marker is owned by Map.tsx
     return (
         <>
+            {isLoading && origin && (
+                <Marker key="jumplines-loading" longitude={origin.lon} latitude={origin.lat} anchor="center">
+                    <div
+                        style={LOADER_OUTER_STYLE}
+                        role="status"
+                        aria-live="polite"
+                        aria-label="Finding connected cities"
+                    >
+                        <div style={LOADER_INNER_STYLE} />
+                    </div>
+                </Marker>
+            )}
             {jumps.map((j) => (
                 <Marker key={`${j.name}-${j.target[0]}-${j.target[1]}`} longitude={j.target[0]} latitude={j.target[1]} anchor="center">
                     <div
@@ -328,5 +404,3 @@ export default function Jumplines(props: Props): React.ReactElement | null {
         </>
     );
 }
-
-
