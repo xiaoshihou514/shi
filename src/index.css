@@ -69,3 +69,7 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+.maplibregl-popup-content {
+  background: none !important;
+}

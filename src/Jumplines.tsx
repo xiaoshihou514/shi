@@ -58,6 +58,30 @@ const LOADER_INNER_STYLE: React.CSSProperties = {
     boxSizing: 'border-box',
 };
 
+const POPUP_CONTAINER_STYLE: React.CSSProperties = {
+    maxWidth: 260,
+    fontSize: 12,
+    lineHeight: 1.5,
+    background: 'rgba(15, 23, 42, 0.92)',
+    color: '#e2e8f0',
+    borderRadius: 12,
+    padding: '12px 14px',
+    boxShadow: '0 12px 24px rgba(15, 23, 42, 0.45)',
+    border: '1px solid rgba(148, 163, 184, 0.35)',
+    backdropFilter: 'blur(3px)'
+};
+
+const POPUP_TITLE_STYLE: React.CSSProperties = {
+    fontWeight: 600,
+    fontSize: 13,
+    marginBottom: 6,
+    color: '#f8fafc'
+};
+
+const POPUP_REASON_STYLE: React.CSSProperties = {
+    color: '#cbd5f5'
+};
+
 export default function Jumplines(props: Props): React.ReactElement | null {
     const {origin, cityName, autoZoom = true} = props;
     const overlay = useControl(() => new MapboxOverlay({interleaved: true}));
@@ -428,9 +452,9 @@ export default function Jumplines(props: Props): React.ReactElement | null {
                     onClose={() => setSelected(null)}
                     anchor="bottom"
                 >
-                    <div style={{maxWidth: 260, fontSize: 12, lineHeight: 1.4}} onClick={(e) => e.stopPropagation()}>
-                        <div style={{fontWeight: 600, marginBottom: 4}}>{selected.name}</div>
-                        <div>{selected.reason ?? 'Related via historical or cultural ties.'}</div>
+                    <div style={POPUP_CONTAINER_STYLE} onClick={(e) => e.stopPropagation()}>
+                        <div style={POPUP_TITLE_STYLE}>{selected.name}</div>
+                        <div style={POPUP_REASON_STYLE}>{selected.reason ?? 'Related via historical or cultural ties.'}</div>
                     </div>
                 </Popup>
             )}
