@@ -13,23 +13,14 @@
 
 .desc-panel {
     pointer-events: auto;
+    max-height: calc(100% - 48px);
     width: 100%;
-    height: calc(100dvh - 16px);
-    max-height: calc(100dvh - 16px);
-    margin: 8px 0;
-    position: relative;
     background: linear-gradient(165deg, rgba(10, 13, 30, 0.95), rgba(15, 20, 44, 0.88));
     border: 1px solid rgba(124, 92, 255, 0.32);
-    border-radius: 20px;
     box-shadow: 0 28px 60px rgba(8, 10, 22, 0.55);
-    backdrop-filter: blur(18px);
     padding: 24px 28px;
-    display: flex;
-    flex-direction: column;
     gap: 24px;
     color: #f3f5ff;
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    overflow: hidden;
 }
 
 .desc-close {
