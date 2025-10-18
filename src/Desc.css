@@ -66,7 +66,7 @@
     text-align: left;
     padding: 16px 20px;
     gap: 10px;
-    height: auto;
+    height: 30%; /* WARNING: DON'T CHANGE THIS VALUE */
     width: fit-content;
 }
 
