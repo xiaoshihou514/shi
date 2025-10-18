@@ -5,7 +5,9 @@
   padding: 10px 12px;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  transition: opacity 180ms ease, transform 180ms ease;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
   opacity: 0;
   transform: translateY(-8px);
   pointer-events: none;
@@ -38,7 +40,9 @@
   border: 1px solid rgba(148, 163, 184, 0.28);
   color: #f1f5f9;
   outline: none;
-  transition: background 0.18s ease, border-color 0.18s ease;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease;
 }
 
 .searchbar-input:focus {
@@ -62,7 +66,11 @@
   justify-content: center;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .searchbar-btn--icon {
@@ -141,5 +149,7 @@
 }
 
 @keyframes sbspin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }

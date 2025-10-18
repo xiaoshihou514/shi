@@ -1,221 +1,262 @@
-import {defineConfig} from 'vite'
-import type {IncomingMessage, ServerResponse} from 'http'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vite";
+import type { IncomingMessage, ServerResponse } from "http";
+import react from "@vitejs/plugin-react";
 
 // https://vite.dev/config/
 export default defineConfig({
-    server: {
-        proxy: {
-            // Usage: fetch("/geo/EGY/ADM0")
-            "/geo": {
-                target: "https://github.com",
-                changeOrigin: true,
-                rewrite: (p) => {
-                    // Expect: /geo/:cc/:level  e.g. /geo/EGY/ADM1
-                    const m = p.match(/^\/geo\/([^/]+)\/(ADM[0-9]+)$/i);
-                    if (!m) return p; // fallback (no rewrite)
-                    const cc = m[1].toUpperCase();
-                    const level = m[2].toUpperCase();
-                    // Pin to a commit (replace with your ref if needed)
-                    const ref = "9469f09";
-                    return `/wmgeolab/geoBoundaries/raw/${ref}/releaseData/gbOpen/${cc}/${level}/geoBoundaries-${cc}-${level}.geojson`;
-                },
-            },
+  server: {
+    proxy: {
+      // Usage: fetch("/geo/EGY/ADM0")
+      "/geo": {
+        target: "https://github.com",
+        changeOrigin: true,
+        rewrite: (p) => {
+          // Expect: /geo/:cc/:level  e.g. /geo/EGY/ADM1
+          const m = p.match(/^\/geo\/([^/]+)\/(ADM[0-9]+)$/i);
+          if (!m) return p; // fallback (no rewrite)
+          const cc = m[1].toUpperCase();
+          const level = m[2].toUpperCase();
+          // Pin to a commit (replace with your ref if needed)
+          const ref = "9469f09";
+          return `/wmgeolab/geoBoundaries/raw/${ref}/releaseData/gbOpen/${cc}/${level}/geoBoundaries-${cc}-${level}.geojson`;
         },
+      },
     },
+  },
 
-    plugins: [
-        react(),
-        {
-            name: 'ppx-proxy',
-            configureServer(server) {
-                const getApiKey = () => process.env.PERPLEXITY_API_KEY || process.env.VITE_PERPLEXITY_API_KEY
+  plugins: [
+    react(),
+    {
+      name: "ppx-proxy",
+      configureServer(server) {
+        const getApiKey = () =>
+          process.env.PERPLEXITY_API_KEY || process.env.VITE_PERPLEXITY_API_KEY;
 
-                const readJsonBody = <T>(req: IncomingMessage): Promise<T> => new Promise((resolve, reject) => {
-                    let data = ''
-                    req.on('data', (chunk) => {
-                        data += chunk
-                    })
-                    req.on('end', () => {
-                        try {
-                            const parsed = data ? JSON.parse(data) as unknown : {}
-                            resolve((parsed ?? {}) as T)
-                        } catch (e) {
-                            reject(e)
-                        }
-                    })
-                    req.on('error', reject)
-                })
+        const readJsonBody = <T>(req: IncomingMessage): Promise<T> =>
+          new Promise((resolve, reject) => {
+            let data = "";
+            req.on("data", (chunk) => {
+              data += chunk;
+            });
+            req.on("end", () => {
+              try {
+                const parsed = data ? (JSON.parse(data) as unknown) : {};
+                resolve((parsed ?? {}) as T);
+              } catch (e) {
+                reject(e);
+              }
+            });
+            req.on("error", reject);
+          });
 
-                const handleChatRequest = async (
-                    req: IncomingMessage,
-                    res: ServerResponse,
-                    next: () => void,
-                ) => {
-                    if (req.method !== 'POST') return next()
-                    try {
-                        type ChatRole = 'system' | 'user' | 'assistant' | 'tool'
-                        type ChatMessage = { role: ChatRole; content: string }
-                        type ProxyBody = {
-                            prompt?: string
-                            messages?: ChatMessage[]
-                            model?: string
-                            temperature?: number
-                            searchType?: 'pro' | 'auto' | 'fast'
-                            searchContextSize?: 'low' | 'medium' | 'high'
-                        }
-                        const body = await readJsonBody<ProxyBody>(req)
+        const handleChatRequest = async (
+          req: IncomingMessage,
+          res: ServerResponse,
+          next: () => void,
+        ) => {
+          if (req.method !== "POST") return next();
+          try {
+            type ChatRole = "system" | "user" | "assistant" | "tool";
+            type ChatMessage = { role: ChatRole; content: string };
+            type ProxyBody = {
+              prompt?: string;
+              messages?: ChatMessage[];
+              model?: string;
+              temperature?: number;
+              searchType?: "pro" | "auto" | "fast";
+              searchContextSize?: "low" | "medium" | "high";
+            };
+            const body = await readJsonBody<ProxyBody>(req);
 
-                        const apiKey = getApiKey()
-                        if (!apiKey) {
-                            res.statusCode = 500
-                            res.setHeader('Content-Type', 'application/json')
-                            res.end(JSON.stringify({error: 'Missing PERPLEXITY_API_KEY on server'}))
-                            return
-                        }
+            const apiKey = getApiKey();
+            if (!apiKey) {
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(
+                JSON.stringify({
+                  error: "Missing PERPLEXITY_API_KEY on server",
+                }),
+              );
+              return;
+            }
 
-                        const {default: Perplexity} = await import('@perplexity-ai/perplexity_ai')
-                        const client = new Perplexity({apiKey})
+            const { default: Perplexity } = await import(
+              "@perplexity-ai/perplexity_ai"
+            );
+            const client = new Perplexity({ apiKey });
 
-                        const messages: ChatMessage[] | null = Array.isArray(body?.messages) && body.messages.length > 0
-                            ? body.messages
-                            : (typeof body?.prompt === 'string' && body.prompt.trim())
-                                ? ([{role: 'user' as ChatRole, content: String(body.prompt)}] as ChatMessage[])
-                                : null
+            const messages: ChatMessage[] | null =
+              Array.isArray(body?.messages) && body.messages.length > 0
+                ? body.messages
+                : typeof body?.prompt === "string" && body.prompt.trim()
+                  ? ([
+                      {
+                        role: "user" as ChatRole,
+                        content: String(body.prompt),
+                      },
+                    ] as ChatMessage[])
+                  : null;
 
-                        if (!messages) {
-                            res.statusCode = 400
-                            res.setHeader('Content-Type', 'application/json')
-                            res.end(JSON.stringify({error: 'Provide prompt or messages'}))
-                            return
-                        }
+            if (!messages) {
+              res.statusCode = 400;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: "Provide prompt or messages" }));
+              return;
+            }
 
-                        const completion = await client.chat.completions.create({
-                            model: body?.model ?? 'sonar-pro',
-                            messages: messages as Array<{ role: ChatRole; content: string }>,
-                            stream: false,
-                            temperature: body?.temperature,
-                            web_search_options: {
-                                search_type: body?.searchType ?? 'pro',
-                                search_context_size: body?.searchContextSize,
-                            },
-                        })
+            const completion = await client.chat.completions.create({
+              model: body?.model ?? "sonar-pro",
+              messages: messages as Array<{ role: ChatRole; content: string }>,
+              stream: false,
+              temperature: body?.temperature,
+              web_search_options: {
+                search_type: body?.searchType ?? "pro",
+                search_context_size: body?.searchContextSize,
+              },
+            });
 
-                        type CompletionMinimal = {
-                            choices?: Array<{ message?: { content?: string } }>
-                            usage?: {
-                                completion_tokens: number
-                                prompt_tokens: number
-                                total_tokens: number
-                                search_context_size?: string | null
-                                cost?: {
-                                    input_tokens_cost: number
-                                    output_tokens_cost: number
-                                    total_cost: number
-                                    request_cost?: number | null
-                                    search_queries_cost?: number | null
-                                    citation_tokens_cost?: number | null
-                                    reasoning_tokens_cost?: number | null
-                                }
-                            } | null
-                            search_results?: Array<{
-                                title: string
-                                url: string
-                                date?: string | null
-                                last_updated?: string | null
-                                snippet?: string
-                                source?: 'web' | 'attachment'
-                            }>
-                        }
+            type CompletionMinimal = {
+              choices?: Array<{ message?: { content?: string } }>;
+              usage?: {
+                completion_tokens: number;
+                prompt_tokens: number;
+                total_tokens: number;
+                search_context_size?: string | null;
+                cost?: {
+                  input_tokens_cost: number;
+                  output_tokens_cost: number;
+                  total_cost: number;
+                  request_cost?: number | null;
+                  search_queries_cost?: number | null;
+                  citation_tokens_cost?: number | null;
+                  reasoning_tokens_cost?: number | null;
+                };
+              } | null;
+              search_results?: Array<{
+                title: string;
+                url: string;
+                date?: string | null;
+                last_updated?: string | null;
+                snippet?: string;
+                source?: "web" | "attachment";
+              }>;
+            };
 
-                        const cmp = completion as unknown as CompletionMinimal
+            const cmp = completion as unknown as CompletionMinimal;
 
-                        const text = (Array.isArray(cmp?.choices) ? cmp.choices : [])
-                            .map((c: { message?: { content?: string } }) => c?.message?.content)
-                            .filter(Boolean)
-                            .join('') || ''
+            const text =
+              (Array.isArray(cmp?.choices) ? cmp.choices : [])
+                .map(
+                  (c: { message?: { content?: string } }) =>
+                    c?.message?.content,
+                )
+                .filter(Boolean)
+                .join("") || "";
 
-                        const payload = {
-                            text,
-                            usage: cmp?.usage ?? null,
-                            searchResults: cmp?.search_results ?? null,
-                            media: null,
-                        }
+            const payload = {
+              text,
+              usage: cmp?.usage ?? null,
+              searchResults: cmp?.search_results ?? null,
+              media: null,
+            };
 
-                        res.statusCode = 200
-                        res.setHeader('Content-Type', 'application/json')
-                        res.end(JSON.stringify(payload))
-                    } catch (err: unknown) {
-                        const message = (err && typeof err === 'object' && 'message' in err) ? String((err as {
-                            message?: string
-                        }).message) : 'Proxy error'
-                        res.statusCode = 500
-                        res.setHeader('Content-Type', 'application/json')
-                        res.end(JSON.stringify({error: message}))
-                    }
-                }
+            res.statusCode = 200;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify(payload));
+          } catch (err: unknown) {
+            const message =
+              err && typeof err === "object" && "message" in err
+                ? String(
+                    (
+                      err as {
+                        message?: string;
+                      }
+                    ).message,
+                  )
+                : "Proxy error";
+            res.statusCode = 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: message }));
+          }
+        };
 
-                server.middlewares.use('/api/ppx/chat', (req, res, next) => {
-                    handleChatRequest(req, res, next)
-                })
+        server.middlewares.use("/api/ppx/chat", (req, res, next) => {
+          handleChatRequest(req, res, next);
+        });
 
-                server.middlewares.use('/api/ppx/media', async (req: IncomingMessage, res: ServerResponse, next) => {
-                    if (req.method !== 'POST') return next()
-                    type ChatRole = 'system' | 'user' | 'assistant' | 'tool'
-                    type ChatMessage = { role: ChatRole; content: string }
-                    type MediaBody = {
-                        prompt?: string
-                        messages?: ChatMessage[]
-                        mediaOverrides?: Record<string, unknown>
-                        model?: string
-                        temperature?: number
-                    }
-                    const body = await readJsonBody<MediaBody>(req)
+        server.middlewares.use(
+          "/api/ppx/media",
+          async (req: IncomingMessage, res: ServerResponse, next) => {
+            if (req.method !== "POST") return next();
+            type ChatRole = "system" | "user" | "assistant" | "tool";
+            type ChatMessage = { role: ChatRole; content: string };
+            type MediaBody = {
+              prompt?: string;
+              messages?: ChatMessage[];
+              mediaOverrides?: Record<string, unknown>;
+              model?: string;
+              temperature?: number;
+            };
+            const body = await readJsonBody<MediaBody>(req);
 
-                    const apiKey = getApiKey()
-                    if (!apiKey) {
-                        res.statusCode = 500
-                        res.setHeader('Content-Type', 'application/json')
-                        res.end(JSON.stringify({error: 'Missing PERPLEXITY_API_KEY on server'}))
-                        return
-                    }
+            const apiKey = getApiKey();
+            if (!apiKey) {
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(
+                JSON.stringify({
+                  error: "Missing PERPLEXITY_API_KEY on server",
+                }),
+              );
+              return;
+            }
 
-                    const messages: ChatMessage[] | null = Array.isArray(body?.messages) && body.messages.length > 0
-                        ? body.messages
-                        : (typeof body?.prompt === 'string' && body.prompt.trim())
-                            ? ([{role: 'user' as ChatRole, content: String(body.prompt)}] as ChatMessage[])
-                            : null
+            const messages: ChatMessage[] | null =
+              Array.isArray(body?.messages) && body.messages.length > 0
+                ? body.messages
+                : typeof body?.prompt === "string" && body.prompt.trim()
+                  ? ([
+                      {
+                        role: "user" as ChatRole,
+                        content: String(body.prompt),
+                      },
+                    ] as ChatMessage[])
+                  : null;
 
-                    if (!messages) {
-                        res.statusCode = 400
-                        res.setHeader('Content-Type', 'application/json')
-                        res.end(JSON.stringify({error: 'Provide prompt or messages'}))
-                        return
-                    }
+            if (!messages) {
+              res.statusCode = 400;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: "Provide prompt or messages" }));
+              return;
+            }
 
-                    const payload = {
-                        model: body?.model ?? 'sonar-pro',
-                        media_response: {
-                            overrides: body?.mediaOverrides ?? {},
-                        },
-                        temperature: body?.temperature,
-                        messages,
-                    }
+            const payload = {
+              model: body?.model ?? "sonar-pro",
+              media_response: {
+                overrides: body?.mediaOverrides ?? {},
+              },
+              temperature: body?.temperature,
+              messages,
+            };
 
-                    const response = await fetch('https://api.perplexity.ai/chat/completions', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${apiKey}`,
-                        },
-                        body: JSON.stringify(payload),
-                    })
+            const response = await fetch(
+              "https://api.perplexity.ai/chat/completions",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify(payload),
+              },
+            );
 
-                    res.statusCode = 200
-                    res.setHeader('Content-Type', 'application/json')
-                    res.end(await response.text())
-                })
-            },
-        },
-    ],
-})
+            res.statusCode = 200;
+            res.setHeader("Content-Type", "application/json");
+            res.end(await response.text());
+          },
+        );
+      },
+    },
+  ],
+});
