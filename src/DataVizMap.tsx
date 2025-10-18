@@ -166,8 +166,8 @@ export default function DataVizMap(): React.ReactElement {
     );
 
     toFetch.forEach((code) => {
-      const ctrl = new AbortController();
-      controllers[code] = ctrl;
+      const controller = new AbortController();
+      controllers[code] = controller;
       setLoadingMap((prev) => ({ ...prev, [code]: true }));
 
       (async () => {
@@ -236,7 +236,7 @@ export default function DataVizMap(): React.ReactElement {
             setErrorMap((prev) => ({ ...prev, [code]: message }));
           }
         } finally {
-          if (!ctrl.signal.aborted) {
+          if (!controller.signal.aborted) {
             setLoadingMap((prev) => {
               if (!prev[code]) return prev;
               const clone = { ...prev };
@@ -249,7 +249,7 @@ export default function DataVizMap(): React.ReactElement {
     });
 
     return () => {
-      Object.values(controllers).forEach((ctrl) => ctrl.abort());
+      Object.values(controllers).forEach((controller) => controller.abort());
     };
   }, [selectedList, featureCollectionByCode, loadingMap, countryNameByCode]);
 
@@ -427,8 +427,8 @@ export default function DataVizMap(): React.ReactElement {
       }
 
       insightAbortRef.current?.abort();
-      const ctrl = new AbortController();
-      insightAbortRef.current = ctrl;
+      const controller = new AbortController();
+      insightAbortRef.current = controller;
 
       setInsightLoading(true);
       setInsightError(null);
@@ -454,9 +454,9 @@ export default function DataVizMap(): React.ReactElement {
         const { text } = await proSearchText({
           prompt,
           searchType: "pro",
-          signal: ctrl.signal,
+          signal: controller.signal,
         });
-        if (!ctrl.signal.aborted) {
+        if (!controller.signal.aborted) {
           const parsed = parseNumericResponse(text, selectedList);
           if (parsed.values.length === 0) {
             setInsightError(parsed.error ?? "No numeric data returned.");
@@ -487,7 +487,7 @@ export default function DataVizMap(): React.ReactElement {
           setInsightError(msg);
         }
       } finally {
-        if (!ctrl.signal.aborted) {
+        if (!controller.signal.aborted) {
           setInsightLoading(false);
         }
       }

@@ -55,14 +55,14 @@ export default function ClickableMap(): React.ReactElement {
 
     const reverseGeocode = useCallback(async (lat: number, lon: number) => {
         abortRef.current?.abort();
-        const ctrl = new AbortController();
-        abortRef.current = ctrl;
+        const controller = new AbortController();
+        abortRef.current = controller;
         setCityName(null);
         setCityDetailedName(null);
         try {
             const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=en`;
             const resp = await fetch(url, {
-                signal: ctrl.signal,
+                signal: controller.signal,
                 headers: {'Accept': 'application/json'}
             });
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -76,7 +76,7 @@ export default function ClickableMap(): React.ReactElement {
             const ppxCity = await findCityWithPPX({displayName, address: addr ?? null});
             const cityNameVal = ppxCity?.city ?? null;
             const cityDetailedNameVal = ppxCity?.detailedName ?? null;
-            if (!ctrl.signal.aborted) {
+            if (!controller.signal.aborted) {
                 setCityName(cityNameVal);
                 setCityDetailedName(cityDetailedNameVal);
             }

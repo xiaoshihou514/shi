@@ -129,8 +129,8 @@ export default function SearchBar(props: SearchBarProps): React.ReactElement {
       setBusy(true);
       setError(null);
       try {
-        const ctrl = new AbortController();
-        const pos = await geocodeCity(name, ctrl.signal);
+        const controller = new AbortController();
+        const pos = await geocodeCity(name, controller.signal);
         if (!pos) {
           setError("Unable to locate that city");
           return;
@@ -159,14 +159,14 @@ export default function SearchBar(props: SearchBarProps): React.ReactElement {
     setBusy(true);
     setError(null);
     try {
-      const ctrl = new AbortController();
-      const name = await pickRandomCityViaPPX(ctrl.signal);
+      const controller = new AbortController();
+      const name = await pickRandomCityViaPPX(controller.signal);
       if (!name) {
         setError("No city suggested");
         return;
       }
       setValue(name);
-      const pos = await geocodeCity(name, ctrl.signal);
+      const pos = await geocodeCity(name, controller.signal);
       if (!pos) {
         setError("Unable to locate that city");
         return;

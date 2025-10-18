@@ -214,15 +214,15 @@ export default function Jumplines(props: Props): React.ReactElement | null {
       abortRef.current = null;
       return;
     }
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
+    const controller = new AbortController();
+    abortRef.current = controller;
     setIsLoading(true);
     let isActive = true;
 
     (async () => {
       try {
         const baseName = cityName;
-        if (ctrl.signal.aborted) return;
+        if (controller.signal.aborted) return;
 
         // Prompt for related cities
         const prompt = [
@@ -230,7 +230,7 @@ export default function Jumplines(props: Props): React.ReactElement | null {
           `Return a STRICT JSON array only. Each item must be: {"name": "City, Region, Country", "reason": "Brief 1-2 sentence connection to ${baseName}", "category": "historical"|"cultural"|"facts"}`,
         ].join("\n");
         const { text } = await normalSearchText({ prompt, searchType: "fast" });
-        if (ctrl.signal.aborted) return;
+        if (controller.signal.aborted) return;
         const list = parseCityList(text);
         if (list.length === 0) return;
 
@@ -241,12 +241,12 @@ export default function Jumplines(props: Props): React.ReactElement | null {
         let idx = 0;
         await Promise.all(
           [...Array(concurrency)].map(async () => {
-            while (!ctrl.signal.aborted) {
+            while (!controller.signal.aborted) {
               const i = idx++;
               if (i >= queue.length) break;
               const item = queue[i]!;
-              const pos = await geocodeCity(item.name, ctrl.signal);
-              if (ctrl.signal.aborted) return;
+              const pos = await geocodeCity(item.name, controller.signal);
+              if (controller.signal.aborted) return;
               if (pos)
                 out.push({
                   name: item.name,
@@ -258,16 +258,16 @@ export default function Jumplines(props: Props): React.ReactElement | null {
           }),
         );
 
-        if (!ctrl.signal.aborted) setJumps(out);
+        if (!controller.signal.aborted) setJumps(out);
       } catch (e) {
-        if (!ctrl.signal.aborted) {
+        if (!controller.signal.aborted) {
           // Swallow errors; overlay will remain empty
           console.warn("Jumplines failed", e);
         }
       } finally {
         if (isActive) {
           setIsLoading(false);
-          if (abortRef.current === ctrl) {
+          if (abortRef.current === controller) {
             abortRef.current = null;
           }
         }
@@ -276,10 +276,10 @@ export default function Jumplines(props: Props): React.ReactElement | null {
 
     return () => {
       isActive = false;
-      if (abortRef.current === ctrl) {
+      if (abortRef.current === controller) {
         abortRef.current = null;
       }
-      ctrl.abort();
+      controller.abort();
     };
   }, [origin, cityName, parseCityList, geocodeCity]);
 

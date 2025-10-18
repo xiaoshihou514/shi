@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { fetchMedia, type Media, normalSearchText } from "./PPX";
+import { fetchMedia as fetchCityMedia, type Media, normalSearchText } from "./PPX";
 import "./Desc.css";
 
 type ClickedCoord = {
@@ -30,9 +30,9 @@ export default function Desc(props: DescProps): React.ReactElement {
   const mediaAbortRef = useRef<AbortController | null>(null);
 
   const fetchDescription = useCallback(
-    async (targetCity: string, externalCtrl?: AbortController) => {
-      const ctrl = externalCtrl ?? new AbortController();
-      descAbortRef.current = ctrl;
+    async (targetCity: string, externalController?: AbortController) => {
+      const controller = externalController ?? new AbortController();
+      descAbortRef.current = controller;
       setDescLoading(true);
       setDescError(null);
       setDescText(null);
@@ -46,36 +46,36 @@ export default function Desc(props: DescProps): React.ReactElement {
           "Return HTML only without surrounding quotes.",
         ].join(" ");
         const { text } = await normalSearchText({ prompt, searchType: "fast" });
-        if (!ctrl.signal.aborted) setDescText(text.trim());
+        if (!controller.signal.aborted) setDescText(text.trim());
       } catch (e: unknown) {
         const anyErr = e as { message?: string };
-        if (!ctrl.signal.aborted)
+        if (!controller.signal.aborted)
           setDescError(anyErr?.message ?? "Failed to fetch description");
       } finally {
-        if (!ctrl.signal.aborted) setDescLoading(false);
+        if (!controller.signal.aborted) setDescLoading(false);
       }
     },
     [],
   );
 
-  const fetchMedia = useCallback(
-    async (targetCity: string, externalCtrl?: AbortController) => {
-      const ctrl = externalCtrl ?? new AbortController();
-      mediaAbortRef.current = ctrl;
+  const loadMedia = useCallback(
+    async (targetCity: string, externalController?: AbortController) => {
+      const controller = externalController ?? new AbortController();
+      mediaAbortRef.current = controller;
       setMediaLoading(true);
       setMediaError(null);
       setMediaItem(null);
       try {
-        const media = await fetchMedia(targetCity, ctrl.signal);
+        const media = await fetchCityMedia(targetCity, controller.signal);
         console.log(media[0] ?? null);
         setMediaItem(media[0] ?? null);
       } catch (e: unknown) {
-        if (!ctrl.signal.aborted) {
+        if (!controller.signal.aborted) {
           const anyErr = e as { message?: string };
           setMediaError(anyErr?.message ?? "Unable to load imagery");
         }
       } finally {
-        if (!ctrl.signal.aborted) setMediaLoading(false);
+        if (!controller.signal.aborted) setMediaLoading(false);
       }
     },
     [],
@@ -97,26 +97,26 @@ export default function Desc(props: DescProps): React.ReactElement {
       return;
     }
 
-    const descCtrl = new AbortController();
-    const mediaCtrl = new AbortController();
-    fetchDescription(normalizedCity, descCtrl);
-    fetchMedia(normalizedCity, mediaCtrl);
+    const descController = new AbortController();
+    const mediaController = new AbortController();
+    fetchDescription(normalizedCity, descController);
+    loadMedia(normalizedCity, mediaController);
     return () => {
-      descCtrl.abort();
-      mediaCtrl.abort();
+      descController.abort();
+      mediaController.abort();
     };
-  }, [cityDetailedName, cityName, fetchDescription, fetchMedia]);
+  }, [cityDetailedName, cityName, fetchDescription, loadMedia]);
 
   const onRetry = useCallback(() => {
     const normalizedCity = (cityDetailedName ?? cityName)?.trim();
     if (!normalizedCity) return;
     descAbortRef.current?.abort();
     mediaAbortRef.current?.abort();
-    const descCtrl = new AbortController();
-    const mediaCtrl = new AbortController();
-    fetchDescription(normalizedCity, descCtrl);
-    fetchMedia(normalizedCity, mediaCtrl);
-  }, [cityDetailedName, cityName, fetchDescription, fetchMedia]);
+    const descController = new AbortController();
+    const mediaController = new AbortController();
+    fetchDescription(normalizedCity, descController);
+    loadMedia(normalizedCity, mediaController);
+  }, [cityDetailedName, cityName, fetchDescription, loadMedia]);
 
   const formattedLat = clicked ? `${clicked.lat.toFixed(3)}°` : null;
   const formattedLon = clicked ? `${clicked.lon.toFixed(3)}°` : null;

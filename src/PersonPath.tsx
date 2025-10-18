@@ -133,8 +133,8 @@ export default function PersonPath(): React.ReactElement {
         // fetch intro for person and show panel
         introAbortRef.current?.abort();
         setShowPanel(true);
-        const introCtrl = new AbortController();
-        introAbortRef.current = introCtrl;
+        const introController = new AbortController();
+        introAbortRef.current = introController;
         void (async () => {
           try {
             setPersonIntroLoading(true);
@@ -149,20 +149,20 @@ export default function PersonPath(): React.ReactElement {
             const { text } = await normalSearchText({
               prompt,
               searchType: "fast",
-              signal: introCtrl.signal,
+              signal: introController.signal,
             });
-            if (!introCtrl.signal.aborted) setPersonIntroHtml(text.trim());
+            if (!introController.signal.aborted) setPersonIntroHtml(text.trim());
           } catch (e: unknown) {
             const anyErr = e as { message?: string };
-            if (!introCtrl.signal.aborted)
+            if (!introController.signal.aborted)
               setPersonIntroError(anyErr?.message ?? "Failed to fetch intro");
           } finally {
-            if (!introCtrl.signal.aborted) setPersonIntroLoading(false);
+            if (!introController.signal.aborted) setPersonIntroLoading(false);
           }
         })();
 
-        const ctrl = new AbortController();
-        const raw = await fetchPersonLifePath(trimmed, ctrl.signal);
+        const pathController = new AbortController();
+        const raw = await fetchPersonLifePath(trimmed, pathController.signal);
         // If no usable hops returned, surface a friendly error
         if (!raw || raw.length <= 2) {
           setError("The person is not very famous, try another one!");
@@ -172,7 +172,7 @@ export default function PersonPath(): React.ReactElement {
         // Geocode sequentially to keep it simple and cache-friendly
         const out: GeocodedHop[] = [];
         for (const hop of raw) {
-          const pos = await geocodeCity(hop.city, ctrl.signal);
+          const pos = await geocodeCity(hop.city, pathController.signal);
           if (!pos) continue;
           out.push({ ...hop, lat: pos.lat, lon: pos.lon });
         }
@@ -416,22 +416,22 @@ export default function PersonPath(): React.ReactElement {
   const mediaTargetCity = (selectedHop ?? fallbackHop)?.city ?? null;
 
   const fetchPersonImage = useCallback(
-    async (personName: string, externalCtrl?: AbortController) => {
-      const ctrl = externalCtrl ?? new AbortController();
-      mediaAbortRef.current = ctrl;
+    async (personName: string, externalController?: AbortController) => {
+      const controller = externalController ?? new AbortController();
+      mediaAbortRef.current = controller;
       setMediaLoading(true);
       setMediaError(null);
       setMediaItem(null);
       try {
-        const media = await fetchPersonMedia(personName, ctrl.signal);
-        if (!ctrl.signal.aborted) setMediaItem(media[0] ?? null);
+        const media = await fetchPersonMedia(personName, controller.signal);
+        if (!controller.signal.aborted) setMediaItem(media[0] ?? null);
       } catch (e: unknown) {
-        if (!ctrl.signal.aborted) {
+        if (!controller.signal.aborted) {
           const anyErr = e as { message?: string };
           setMediaError(anyErr?.message ?? "Unable to load imagery");
         }
       } finally {
-        if (!ctrl.signal.aborted) setMediaLoading(false);
+        if (!controller.signal.aborted) setMediaLoading(false);
       }
     },
     [],
@@ -448,10 +448,10 @@ export default function PersonPath(): React.ReactElement {
       return;
     }
 
-    const ctrl = new AbortController();
-    fetchPersonImage(normalizedPerson, ctrl);
+    const controller = new AbortController();
+    fetchPersonImage(normalizedPerson, controller);
     return () => {
-      ctrl.abort();
+      controller.abort();
     };
   }, [activePerson, showPanel, fetchPersonImage]);
 
@@ -459,8 +459,8 @@ export default function PersonPath(): React.ReactElement {
     const trimmed = person.trim();
     if (!trimmed) return;
     introAbortRef.current?.abort();
-    const ctrl = new AbortController();
-    introAbortRef.current = ctrl;
+    const introController = new AbortController();
+    introAbortRef.current = introController;
     (async () => {
       try {
         setPersonIntroLoading(true);
@@ -475,15 +475,15 @@ export default function PersonPath(): React.ReactElement {
         const { text } = await normalSearchText({
           prompt,
           searchType: "fast",
-          signal: ctrl.signal,
+          signal: introController.signal,
         });
-        if (!ctrl.signal.aborted) setPersonIntroHtml(text.trim());
+        if (!introController.signal.aborted) setPersonIntroHtml(text.trim());
       } catch (e: unknown) {
         const anyErr = e as { message?: string };
-        if (!ctrl.signal.aborted)
+        if (!introController.signal.aborted)
           setPersonIntroError(anyErr?.message ?? "Failed to fetch intro");
       } finally {
-        if (!ctrl.signal.aborted) setPersonIntroLoading(false);
+        if (!introController.signal.aborted) setPersonIntroLoading(false);
       }
     })();
   }, [person]);
