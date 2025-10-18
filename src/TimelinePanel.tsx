@@ -24,9 +24,6 @@ export default function TimelinePanel(props: TimelinePanelProps): React.ReactEle
     const displayCity = (cityDetailedName ?? cityName ?? '').trim();
     const hasCity = displayCity.length > 0;
     const [activeView, setActiveView] = React.useState<'timeline' | 'wordcloud'>('timeline');
-    React.useEffect(() => {
-        setActiveView('timeline');
-    }, [displayCity]);
 
     if (!hasSelection) {
         return <></>;

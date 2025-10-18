@@ -77,16 +77,18 @@ export default function Desc(props: DescProps): React.ReactElement {
         // cancel previous
         descAbortRef.current?.abort();
         mediaAbortRef.current?.abort();
-        setDescText(null);
-        setDescError(null);
-        setMediaItem(null);
-        setMediaError(null);
+
         const normalizedCity = (cityDetailedName ?? cityName)?.trim();
         if (!normalizedCity) {
             setDescLoading(false);
             setMediaLoading(false);
+            setDescText(null);
+            setMediaItem(null);
+            setDescError(null);
+            setMediaError(null);
             return;
         }
+
         const descCtrl = new AbortController();
         const mediaCtrl = new AbortController();
         fetchDescription(normalizedCity, descCtrl);

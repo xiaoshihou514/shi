@@ -226,7 +226,7 @@ export default function ClickableMap(): React.ReactElement {
 
     return (
         <div style={{position: 'relative', width: '100%', height: '100dvh'}}>
-            {showDesc && (
+            <div style={{display: showDesc ? 'block' : 'none'}}>
                 <Desc
                     clicked={clicked}
                     cityName={cityName}
@@ -235,8 +235,8 @@ export default function ClickableMap(): React.ReactElement {
                     ppxError={ppxError}
                     onClose={() => setShowDesc(false)}
                 />
-            )}
-            {showTimeline && (
+            </div>
+            <div style={{display: showTimeline ? 'block' : 'none'}}>
                 <TimelinePanel
                     clicked={clicked}
                     cityName={cityName}
@@ -246,7 +246,7 @@ export default function ClickableMap(): React.ReactElement {
                     timelineRef={timelineRef}
                     onClose={() => setShowTimeline(false)}
                 />
-            )}
+            </div>
 
             {!showDesc && (
                 <button
