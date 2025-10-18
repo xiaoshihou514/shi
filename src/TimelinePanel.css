@@ -159,8 +159,7 @@
     flex: 1 1 auto;
     min-height: 0;
     border-radius: 16px;
-    border: 1px solid rgba(124, 92, 255, 0.22);
-    padding: 16px;
+    padding: 17px;
     display: flex;
     position: relative;
     overflow: hidden;
