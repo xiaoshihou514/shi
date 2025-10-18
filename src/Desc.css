@@ -13,15 +13,18 @@
 
 .desc-panel {
     pointer-events: auto;
-    max-height: calc(100% - 48px);
+    max-height: calc(100%);
     min-width: fit-content;
     width: 100%;
     background: linear-gradient(165deg, rgba(10, 13, 30, 0.95), rgba(15, 20, 44, 0.88));
     border: 1px solid rgba(124, 92, 255, 0.32);
+    border-radius: 20px;
     box-shadow: 0 28px 60px rgba(8, 10, 22, 0.55);
     padding: 24px 28px;
     gap: 24px;
     color: #f3f5ff;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .desc-close {
@@ -80,18 +83,18 @@
     flex-direction: column;
     gap: 24px;
     flex: 1 1 auto;
-    min-height: 1;
+    min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     padding-right: 10px;
 }
 
 .desc-scroll::-webkit-scrollbar {
-    width: 6px;
+    width: 0;
 }
 
 .desc-scroll::-webkit-scrollbar-thumb {
-    background: rgba(124, 92, 255, 0.35);
-    border-radius: 999px;
+    background: transparent;
 }
 
 .desc-empty__icon {
