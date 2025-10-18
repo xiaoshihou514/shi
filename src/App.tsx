@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
 import Map from './Map';
-import DataVizMap from './DataVizMap.tsx';
+import DataVizMap from './DataVizMap';
 import './App.css';
 
 type Mode = 'primary' | 'sandbox';
