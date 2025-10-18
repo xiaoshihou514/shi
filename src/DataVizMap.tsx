@@ -36,6 +36,11 @@ type ParsedInterval = {
     range: [number, number];
 };
 
+type ColoredPolygon = BoundaryPolygon & {
+    fillColor: [number, number, number, number];
+    lineColor: [number, number, number, number];
+};
+
 export default function DataVizMap(): React.ReactElement {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCodes, setSelectedCodes] = useState<Set<string>>(() => new Set());
@@ -190,71 +195,114 @@ export default function DataVizMap(): React.ReactElement {
     }, [selectedList, featureCollectionByCode, loadingMap, countryNameByCode]);
 
     const layers = useMemo<Layer[]>(() => {
+        const layersOut: Layer[] = [];
+        const baseColorHex = '#3ba0f6';
+        const baseFill = hexToRgba(baseColorHex, 110) as [number, number, number, number];
+        const baseLine = hexToRgba(baseColorHex, 200) as [number, number, number, number];
+
         const valueColorByCode = new Map<string, string>();
         const textColorByCode = new Map<string, string>();
-        if (numericResults.length > 0) {
-            for (const bucket of intervalBuckets) {
-                for (const member of bucket.members) {
-                    valueColorByCode.set(member.code, bucket.color);
-                    textColorByCode.set(member.code, bucket.color);
-                }
+        for (const bucket of intervalBuckets) {
+            for (const member of bucket.members) {
+                valueColorByCode.set(member.code, bucket.color);
+                textColorByCode.set(member.code, bucket.color);
             }
         }
 
-        const polygonLayers = selectedList.reduce<Layer[]>((acc, code) => {
-            const data = boundaryDataByCode[code];
-            if (!data || data.length === 0) return acc;
-            const fillColorHex = valueColorByCode.get(code);
-            const fillColor = fillColorHex ? hexToRgba(fillColorHex, 120) : [59, 130, 246, 80];
-            const lineColor = fillColorHex ? hexToRgba(fillColorHex, 220) : [59, 130, 246, 220];
-            acc.push(new PolygonLayer<BoundaryPolygon>({
-                id: `country-boundary-${code}`,
-                data,
+        const basePolygons: BoundaryPolygon[] = [];
+        const coloredPolygons: ColoredPolygon[] = [];
+
+        for (const code of selectedList) {
+            const polygons = boundaryDataByCode[code] ?? [];
+            if (!polygons.length) continue;
+            const colorHex = valueColorByCode.get(code);
+            if (colorHex) {
+                const fillColor = hexToRgba(colorHex, 140) as [number, number, number, number];
+                const lineColor = hexToRgba(colorHex, 230) as [number, number, number, number];
+                coloredPolygons.push(
+                    ...polygons.map((poly) => ({
+                        ...poly,
+                        fillColor,
+                        lineColor
+                    }))
+                );
+            } else {
+                basePolygons.push(...polygons);
+            }
+        }
+
+        if (basePolygons.length) {
+            layersOut.push(new PolygonLayer<BoundaryPolygon>({
+                id: 'country-boundary-base',
+                data: basePolygons,
                 getPolygon: (d) => d.coordinates,
                 stroked: true,
                 filled: true,
                 pickable: true,
-                getLineColor: () => lineColor as [number, number, number, number],
-                getFillColor: () => fillColor as [number, number, number, number],
+                getLineColor: () => baseLine,
+                getFillColor: () => baseFill,
                 lineWidthUnits: 'pixels',
                 lineWidthMinPixels: 1.5,
                 autoHighlight: true,
                 highlightColor: [255, 255, 255, 160]
             }));
-            return acc;
-        }, []);
+        }
 
-        if (numericResults.length === 0) return polygonLayers;
+        if (coloredPolygons.length) {
+            layersOut.push(new PolygonLayer<ColoredPolygon>({
+                id: 'country-boundary-data',
+                data: coloredPolygons,
+                getPolygon: (d) => d.coordinates,
+                stroked: true,
+                filled: true,
+                pickable: true,
+                getLineColor: (d) => d.lineColor,
+                getFillColor: (d) => d.fillColor,
+                lineWidthUnits: 'pixels',
+                lineWidthMinPixels: 1.5,
+                autoHighlight: true,
+                highlightColor: [255, 255, 255, 160]
+            }));
+        }
 
-        const textData = numericResults
-            .map(({code, value}) => {
-                const position = centroidByCode[code];
-                if (!position) return null;
-                const color = textColorByCode.get(code) ?? '#38bdf8';
-                return {
-                    code,
-                    value,
-                    position,
-                    color
-                };
-            })
-            .filter((item): item is {code: string; value: number; position: [number, number]; color: string} => !!item);
+        if (coloredPolygons.length) {
+            const textData = numericResults
+                .map(({code, value}) => {
+                    const position = centroidByCode[code];
+                    if (!position) return null;
+                    const color = textColorByCode.get(code) ?? baseColorHex;
+                    return {
+                        code,
+                        value,
+                        position,
+                        color
+                    };
+                })
+                .filter((item): item is {
+                    code: string;
+                    value: number;
+                    position: [number, number];
+                    color: string;
+                } => !!item);
 
-        if (textData.length === 0) return polygonLayers;
+            if (textData.length) {
+                layersOut.push(new TextLayer<{ code: string; value: number; position: [number, number]; color: string }>({
+                    id: 'country-values',
+                    data: textData,
+                    getPosition: (d) => d.position,
+                    getText: (d) => `${d.code}: ${d.value.toFixed(2)}`,
+                    getAlignmentBaseline: 'center',
+                    getColor: (d) => {
+                        const { r, g, b, a } = hexToRgba(d.color, 230);
+                        // Invert the RGB channels (255 - value)
+                        return [255 - r, 255 - g, 255 - b, a];
+                    },
+                    getSize: 25,
+                }));
+            }
+        }
 
-        const textLayer = new TextLayer<{code: string; value: number; position: [number, number]; color: string}>({
-            id: 'country-values',
-            data: textData,
-            getPosition: (d) => d.position,
-            getText: (d) => `${d.code}: ${d.value.toFixed(2)}`,
-            getTextAnchor: 'middle',
-            getAlignmentBaseline: 'center',
-            getColor: (d) => hexToRgba(d.color, 230),
-            getSize: 14,
-            pickable: false
-        });
-
-        return [...polygonLayers, textLayer];
+        return layersOut;
     }, [boundaryDataByCode, selectedList, numericResults, intervalBuckets, centroidByCode]);
 
     const handleInsightSubmit = useCallback(async (event?: React.FormEvent<HTMLFormElement>) => {
@@ -286,7 +334,7 @@ export default function DataVizMap(): React.ReactElement {
 
         const prompt = [
             `Provide numeric ${trimmed} values for the countries below.`,
-            'Respond with a JSON object containing two keys: "values" (map ISO alpha-3 code -> double) and "intervals" (array of objects with {"label": string, "range": [min, max], "color": hex}).',
+            'Respond strictly using the following JSON format, containing two keys: "values" (map ISO alpha-3 code -> double) and "intervals" (array of objects with {"label": string, "range": [min, max], "color": hex}).',
             'Example: {"values": {"USA": 123.4, "CAN": 98.1}, "intervals": [{"label": "Low", "range": [0, 50], "color": "#0ea5e9"}, ...]}. Use your best numeric estimates and leave out commentary.',
             countryLines
         ].join('\n');
@@ -324,11 +372,9 @@ export default function DataVizMap(): React.ReactElement {
             <MLMap
                 mapStyle={MAP_STYLE}
                 initialViewState={{
-                    longitude: 8,
-                    latitude: 34,
-                    zoom: 2.6,
-                    pitch: 25,
-                    bearing: 10
+                    longitude: 10,
+                    latitude: 50,
+                    zoom: 3.5
                 }}
                 style={{width: '100%', height: '100%'}}
                 onLoad={(ev) => {
@@ -427,7 +473,7 @@ export default function DataVizMap(): React.ReactElement {
                         <div className="insight-legend">
                             {intervalBuckets.map((bucket) => (
                                 <div key={bucket.label} className="insight-legend__item">
-                                    <span className="insight-legend__swatch" style={{background: bucket.color}} />
+                                    <span className="insight-legend__swatch" style={{background: bucket.color}}/>
                                     <span className="insight-legend__label">{bucket.label}</span>
                                 </div>
                             ))}
@@ -442,7 +488,7 @@ export default function DataVizMap(): React.ReactElement {
                                     <div key={`numeric-${code}`} className="insight-table__row">
                                         <span className="insight-table__code">{code}</span>
                                         <span className="insight-table__value">{value.toFixed(2)}</span>
-                                        <span className="insight-table__tag" style={{background: color}} />
+                                        <span className="insight-table__tag" style={{background: color}}/>
                                     </div>
                                 );
                             })}
@@ -506,7 +552,11 @@ function extractPolygonsFromFeatureCollection(code: string, name: string, collec
     return out;
 }
 
-function parseNumericResponse(raw: string, expectedCodes: string[]): {values: NumericResult[]; intervals?: ParsedInterval[]; error?: string} {
+function parseNumericResponse(raw: string, expectedCodes: string[]): {
+    values: NumericResult[];
+    intervals?: ParsedInterval[];
+    error?: string
+} {
     const values: NumericResult[] = [];
     const parsedIntervals: ParsedInterval[] = [];
     try {
