@@ -1,34 +1,52 @@
-import React from 'react';
+import React, {useState} from 'react';
 import Map from './Map';
 import PersonPath from './PersonPath';
+import DataVizMap from './DataVizMap';
+import './App.css';
+
+type Mode = 'primary' | 'sandbox' | 'person';
 
 const App: React.FC = () => {
-    const [mode, setMode] = React.useState<'map' | 'person'>('map');
-    const toggleLabel = mode === 'map' ? 'Person mode' : 'Map mode';
+    const [mode, setMode] = useState<Mode>('primary');
+
     return (
-        <div className="app" style={{ position: 'relative', width: '100%', height: '100dvh' }}>
-            {mode === 'map' ? <Map /> : <PersonPath />}
-            <button
-                type="button"
-                onClick={() => setMode(mode === 'map' ? 'person' : 'map')}
-                style={{
-                    position: 'absolute',
-                    right: 16,
-                    bottom: 16,
-                    padding: '8px 14px',
-                    borderRadius: 999,
-                    border: '1px solid rgba(124, 92, 255, 0.35)',
-                    background: 'rgba(12, 18, 38, 0.85)',
-                    color: '#f3f5ff',
-                    fontSize: '0.8rem',
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    cursor: 'pointer',
-                    zIndex: 200,
-                }}
-            >
-                {toggleLabel}
-            </button>
+        <div className={`app app-root mode-${mode}`}>
+            <main className="app-main" role="main">
+                {mode === 'primary' ? <Map /> : mode === 'sandbox' ? <DataVizMap /> : <PersonPath />}
+            </main>
+            <nav className="app-mode-switch" role="tablist" aria-label="Map visualization mode">
+                <span className="app-mode-switch__label">Mode</span>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={mode === 'primary'}
+                    aria-pressed={mode === 'primary'}
+                    className={`mode-toggle ${mode === 'primary' ? 'is-active' : ''}`}
+                    onClick={() => setMode('primary')}
+                >
+                    Primary
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={mode === 'sandbox'}
+                    aria-pressed={mode === 'sandbox'}
+                    className={`mode-toggle ${mode === 'sandbox' ? 'is-active' : ''}`}
+                    onClick={() => setMode('sandbox')}
+                >
+                    Sandbox
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={mode === 'person'}
+                    aria-pressed={mode === 'person'}
+                    className={`mode-toggle ${mode === 'person' ? 'is-active' : ''}`}
+                    onClick={() => setMode('person')}
+                >
+                    Person Path
+                </button>
+            </nav>
         </div>
     );
 };

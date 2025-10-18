@@ -1,16 +1,14 @@
 // A beautiful, clickable map, propogates user clicks as coord upwards
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {Map as MLMap, Marker} from '@vis.gl/react-maplibre';
-import type {MapLayerMouseEvent} from 'maplibre-gl';
-import type { StyleSpecification } from 'maplibre-gl';
-import type { TimelineEvent, TimelineHandle } from './Timeline';
+import type {Map as MaplibreMap, MapLayerMouseEvent, StyleSpecification} from 'maplibre-gl';
+import type {TimelineEvent, TimelineHandle} from './Timeline';
 import Desc from './Desc';
 import TimelinePanel from './TimelinePanel';
-import {proSearchText, findCityWithPPX} from './PPX';
+import {findCityWithPPX, proSearchText} from './PPX';
 import mapStyleRaw from './assets/map_style.json?raw';
 import Jumplines from './Jumplines';
 import SearchBar from './SearchBar';
-import type { Map as MaplibreMap } from 'maplibre-gl';
 
 type ClickedCoord = {
     lat: number;
@@ -56,7 +54,7 @@ export default function ClickableMap(): React.ReactElement {
             const data = await resp.json();
             const addr: Record<string, string> | undefined = data?.address;
             const displayName = typeof data?.display_name === 'string' ? data.display_name : null;
-            const ppxCity = await findCityWithPPX({ displayName, address: addr ?? null });
+            const ppxCity = await findCityWithPPX({displayName, address: addr ?? null});
             const cityNameVal = ppxCity?.city ?? null;
             const cityDetailedNameVal = ppxCity?.detailedName ?? null;
             if (!ctrl.signal.aborted) {
@@ -85,7 +83,10 @@ export default function ClickableMap(): React.ReactElement {
     }, []);
 
     const onMapClick = useCallback((e: MapLayerMouseEvent) => {
-        if (jumplineMode) { exitToIdle(); return; }
+        if (jumplineMode) {
+            exitToIdle();
+            return;
+        }
         if (Date.now() < suppressClickUntilRef.current) return;
         const {lng, lat} = e.lngLat ?? {};
         if (typeof lng === 'number' && typeof lat === 'number') {
@@ -306,12 +307,17 @@ export default function ClickableMap(): React.ReactElement {
                     longitude: 10,
                     latitude: 50,
                     zoom: 3.5
-                  }}
-                  style={{ width: '100%', height: '100%' }}
-                  mapStyle={MAP_STYLE}
+                }}
+                style={{width: '100%', height: '100%'}}
+                mapStyle={MAP_STYLE}
                 onClick={onMapClick}
                 onDblClick={onMapDblClick}
-                onLoad={(ev) => { try { mapRef.current = (ev as unknown as { target?: MaplibreMap | null }).target ?? null; } catch { /* no-op */ } }}
+                onLoad={(ev) => {
+                    try {
+                        mapRef.current = (ev as unknown as { target?: MaplibreMap | null }).target ?? null;
+                    } catch { /* no-op */
+                    }
+                }}
             >
                 {jumplineMode && clicked && (
                     <Jumplines
@@ -344,7 +350,10 @@ export default function ClickableMap(): React.ReactElement {
             <div style={{position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 10}}>
                 <SearchBar
                     onLocate={(p) => {
-                        try { mapRef.current?.flyTo({ center: [p.lon, p.lat], zoom: 6.5, duration: 2000 }); } catch { /* no-op */ }
+                        try {
+                            mapRef.current?.flyTo({center: [p.lon, p.lat], zoom: 6.5, duration: 2000});
+                        } catch { /* no-op */
+                        }
                         handleCitySelection(p.lat, p.lon);
                     }}
                 />
