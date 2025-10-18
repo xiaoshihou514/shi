@@ -189,6 +189,7 @@
 
 .desc-media {
     width: 100%;
+    align-self: center;
 }
 
 .desc-media img {

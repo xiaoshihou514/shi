@@ -153,10 +153,6 @@ export default function Desc(props: DescProps): React.ReactElement {
                             </div>
                         </header>
 
-                        {mediaLoading && (
-                            <div className="desc-media desc-media--loading">Loading imagery…</div>
-                        )}
-
                         {!mediaLoading && mediaItem && (
                             <figure className="desc-media">
                                 <img src={mediaItem.url} alt={mediaItem.caption || `Scene from ${displayCity}`}/>
