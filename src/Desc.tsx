@@ -12,10 +12,11 @@ type DescProps = {
     city: string | null;
     ppxLoading: boolean;
     ppxError: string | null;
+    onClose?: () => void;
 };
 
 export default function Desc(props: DescProps): React.ReactElement {
-    const { clicked, city, ppxLoading, ppxError } = props;
+    const { clicked, city, ppxLoading, ppxError, onClose } = props;
 
     const [descText, setDescText] = useState<string | null>(null);
     const [descLoading, setDescLoading] = useState<boolean>(false);
@@ -93,6 +94,14 @@ export default function Desc(props: DescProps): React.ReactElement {
                 </div>
             ) : (
                 <article className="desc-panel desc-panel--full" aria-live="polite">
+                    <button
+                        type="button"
+                        className="desc-close"
+                        aria-label="Close description panel"
+                        onClick={onClose}
+                    >
+                        ×
+                    </button>
                     <header className="desc-header">
                         <div className="desc-header__badge">Location Snapshot</div>
                         <h2 className="desc-header__title">{city ?? 'Locating city…'}</h2>

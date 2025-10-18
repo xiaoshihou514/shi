@@ -1,6 +1,6 @@
 // A beautiful, clickable map, propogates user clicks as coord upwards
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {Map as MLMap, Marker, NavigationControl} from '@vis.gl/react-maplibre';
+import {Map as MLMap, Marker} from '@vis.gl/react-maplibre';
 import type {MapLayerMouseEvent} from 'maplibre-gl';
 import type { TimelineEvent, TimelineHandle } from './Timeline';
 import Desc from './Desc';
@@ -20,6 +20,8 @@ const MAP_STYLE = JSON.parse(await (await fetch("./src/assets/map_style.json")).
 export default function ClickableMap(): React.ReactElement {
     const [clicked, setClicked] = useState<ClickedCoord | null>(null);
     const [city, setCity] = useState<string | null>(null);
+    const [showDesc, setShowDesc] = useState<boolean>(true);
+    const [showTimeline, setShowTimeline] = useState<boolean>(true);
     const abortRef = useRef<AbortController | null>(null);
     const timelineRef = useRef<TimelineHandle | null>(null);
     const [ppxLoading, setPpxLoading] = useState<boolean>(false);
@@ -54,6 +56,8 @@ export default function ClickableMap(): React.ReactElement {
         const {lng, lat} = e.lngLat ?? {};
         if (typeof lng === 'number' && typeof lat === 'number') {
             setClicked({lat, lon: lng});
+            setShowDesc(true);
+            setShowTimeline(true);
             reverseGeocode(lat, lng);
         }
     }, [reverseGeocode]);
@@ -119,6 +123,7 @@ export default function ClickableMap(): React.ReactElement {
         setPpxError(null);
         // Clear existing events
         timelineRef.current?.clearEvents();
+        setShowTimeline(true);
 
         (async () => {
             try {
@@ -155,19 +160,25 @@ export default function ClickableMap(): React.ReactElement {
 
     return (
         <div style={{position: 'relative', width: '100wh', height: '100vh'}}>
-            <Desc
-                clicked={clicked}
-                city={city}
-                ppxLoading={ppxLoading}
-                ppxError={ppxError}
-            />
-            <TimelinePanel
-                clicked={clicked}
-                city={city}
-                ppxLoading={ppxLoading}
-                ppxError={ppxError}
-                timelineRef={timelineRef}
-            />
+            {showDesc && (
+                <Desc
+                    clicked={clicked}
+                    city={city}
+                    ppxLoading={ppxLoading}
+                    ppxError={ppxError}
+                    onClose={() => setShowDesc(false)}
+                />
+            )}
+            {showTimeline && (
+                <TimelinePanel
+                    clicked={clicked}
+                    city={city}
+                    ppxLoading={ppxLoading}
+                    ppxError={ppxError}
+                    timelineRef={timelineRef}
+                    onClose={() => setShowTimeline(false)}
+                />
+            )}
 
             <MLMap
                 initialViewState={{
@@ -179,7 +190,6 @@ export default function ClickableMap(): React.ReactElement {
                   mapStyle={MAP_STYLE}
                 onClick={onMapClick}
             >
-                <NavigationControl position="top-right" />
                 {clicked && (
                     <Marker longitude={clicked.lon} latitude={clicked.lat} anchor="bottom">
                         <div style={{ fontSize: 18 }}>📍</div>

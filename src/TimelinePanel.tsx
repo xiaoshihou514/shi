@@ -13,21 +13,30 @@ type TimelinePanelProps = {
     ppxLoading: boolean;
     ppxError: string | null;
     timelineRef: React.RefObject<TimelineHandle | null>;
+    onClose?: () => void;
 };
 
 export default function TimelinePanel(props: TimelinePanelProps): React.ReactElement {
-    const { clicked, city, ppxLoading, ppxError, timelineRef } = props;
+    const { clicked, city, ppxLoading, ppxError, timelineRef, onClose } = props;
     const hasSelection = Boolean(clicked);
     const hasCity = Boolean(city);
 
     if (!hasSelection) {
-        return <div></div>;
+        return null;
     }
 
     return (
         <aside className="timeline-overlay">
             <div className="timeline-panel" aria-live="polite">
                 <header className="timeline-panel__header">
+                    <button
+                        type="button"
+                        className="timeline-panel__close"
+                        aria-label="Close timeline panel"
+                        onClick={onClose}
+                    >
+                        ×
+                    </button>
                     <div className="timeline-panel__badge">Historical Timeline</div>
                     <h2 className="timeline-panel__title">
                         {city ? `Key moments in ${city}` : 'Select a city to begin'}
