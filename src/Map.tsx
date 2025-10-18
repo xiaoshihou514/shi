@@ -4,6 +4,7 @@ import {Map as MLMap, Marker} from '@vis.gl/react-maplibre';
 import type {MapLayerMouseEvent} from 'maplibre-gl';
 import type { TimelineEvent, TimelineHandle } from './Timeline';
 import Desc from './Desc';
+import Jumplines from './Jumplines';
 import TimelinePanel from './TimelinePanel';
 import {proSearchText, translatePOI} from './PPX';
 
@@ -190,6 +191,9 @@ export default function ClickableMap(): React.ReactElement {
                   mapStyle={MAP_STYLE}
                 onClick={onMapClick}
             >
+                {city && clicked && (
+                    <Jumplines origin={clicked} cityName={city} autoZoom />
+                )}
                 {clicked && (
                     <Marker longitude={clicked.lon} latitude={clicked.lat} anchor="bottom">
                         <div style={{ fontSize: 18 }}>📍</div>
