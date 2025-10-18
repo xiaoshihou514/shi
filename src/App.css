@@ -49,17 +49,6 @@
   padding: 20px 0;
 }
 
-.timeline::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: #007bff;
-  transform: translateX(-50%);
-}
-
 .timeline-item {
   display: flex;
   justify-content: flex-start;
