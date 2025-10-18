@@ -9,15 +9,15 @@ type ClickedCoord = {
 
 type DescProps = {
     clicked: ClickedCoord | null;
-    city: string | null;
-    cityEnglish?: string | null;
+    cityName: string | null;
+    cityDetailedName: string | null;
     ppxLoading: boolean;
     ppxError: string | null;
     onClose?: () => void;
 };
 
 export default function Desc(props: DescProps): React.ReactElement {
-    const { clicked, city, cityEnglish, ppxLoading, ppxError, onClose } = props;
+    const { clicked, cityName, cityDetailedName, ppxLoading, ppxError, onClose } = props;
 
     const [descText, setDescText] = useState<string | null>(null);
     const [descLoading, setDescLoading] = useState<boolean>(false);
@@ -54,7 +54,7 @@ export default function Desc(props: DescProps): React.ReactElement {
         descAbortRef.current?.abort();
         setDescText(null);
         setDescError(null);
-        const normalizedCity = cityEnglish?.trim() || city?.trim();
+        const normalizedCity = cityDetailedName?.trim() 
         if (!normalizedCity) {
             setDescLoading(false);
             return;
@@ -62,20 +62,20 @@ export default function Desc(props: DescProps): React.ReactElement {
         const ctrl = new AbortController();
         fetchDescription(normalizedCity, ctrl);
         return () => ctrl.abort();
-    }, [city, cityEnglish, fetchDescription]);
+    }, [cityDetailedName, fetchDescription]);
 
     const onRetry = useCallback(() => {
-        const normalizedCity = cityEnglish?.trim() || city?.trim();
+        const normalizedCity = cityDetailedName?.trim()
         if (!normalizedCity) return;
         descAbortRef.current?.abort();
         const ctrl = new AbortController();
         fetchDescription(normalizedCity, ctrl);
-    }, [city, cityEnglish, fetchDescription]);
+    }, [cityDetailedName, fetchDescription]);
 
     const formattedLat = clicked ? `${clicked.lat.toFixed(3)}°` : null;
     const formattedLon = clicked ? `${clicked.lon.toFixed(3)}°` : null;
-    const isCityKnown = Boolean(city || cityEnglish);
-    const displayCity = cityEnglish?.trim() || city || 'Locating city…';
+    const isCityKnown = Boolean(cityDetailedName || cityName);
+    const displayCity = cityName || 'Locating city…';
 
     return (
         <div className="desc-overlay">

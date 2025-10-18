@@ -9,17 +9,19 @@ type ClickedCoord = {
 
 type TimelinePanelProps = {
     clicked: ClickedCoord | null;
-    city: string | null;
+    cityName: string | null;
+    cityDetailedName: string | null;
     ppxLoading: boolean;
     ppxError: string | null;
     timelineRef: React.RefObject<TimelineHandle | null>;
     onClose?: () => void;
 };
 
-export default function TimelinePanel(props: TimelinePanelProps): React.ReactElement {
-    const { clicked, city, ppxLoading, ppxError, timelineRef, onClose } = props;
+export default function TimelinePanel(props: TimelinePanelProps): React.ReactElement | null {
+    const { clicked, cityName, cityDetailedName, ppxLoading, ppxError, timelineRef, onClose } = props;
     const hasSelection = Boolean(clicked);
-    const hasCity = Boolean(city);
+    const hasCity = Boolean(cityName || cityDetailedName);
+    const displayCity = cityName ?? null;
 
     if (!hasSelection) {
         return null;
@@ -39,7 +41,7 @@ export default function TimelinePanel(props: TimelinePanelProps): React.ReactEle
                     </button>
                     <div className="timeline-panel__badge">Historical Timeline</div>
                     <h2 className="timeline-panel__title">
-                        {city ? `Key moments in ${city}` : 'Select a city to begin'}
+                        {displayCity ? `Key moments in ${displayCity}` : 'Select a city to begin'}
                     </h2>
                     <div className="timeline-panel__status">
                         {ppxLoading && (
