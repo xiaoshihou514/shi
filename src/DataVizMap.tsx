@@ -61,13 +61,17 @@ export default function DataVizMap(): React.ReactElement {
   const [centroidByCode, setCentroidByCode] = useState<
     Record<string, [number, number] | null>
   >({});
+  const [frameCenterByCode, setFrameCenterByCode] = useState<
+    Record<string, [number, number] | null>
+  >({});
   const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
   const [errorMap, setErrorMap] = useState<Record<string, string>>({});
   const mapRef = useRef<MaplibreMap | null>(null);
   const selectedRef = useRef<Set<string>>(new Set());
+  const [mapZoom, setMapZoom] = useState<number>(3.5);
 
   const [insightQuery, setInsightQuery] = useState("");
-  const [insightResult, setInsightResult] = useState<string | null>(null);
+  const [, setInsightResult] = useState<string | null>(null);
   const [insightError, setInsightError] = useState<string | null>(null);
   const [insightLoading, setInsightLoading] = useState(false);
   const insightAbortRef = useRef<AbortController | null>(null);
@@ -120,6 +124,12 @@ export default function DataVizMap(): React.ReactElement {
           delete clone[code];
           return clone;
         });
+        setFrameCenterByCode((prev) => {
+          if (!(code in prev)) return prev;
+          const clone = { ...prev };
+          delete clone[code];
+          return clone;
+        });
       } else {
         next.add(code);
       }
@@ -132,6 +142,7 @@ export default function DataVizMap(): React.ReactElement {
     setLoadingMap({});
     setErrorMap({});
     setCentroidByCode({});
+    setFrameCenterByCode({});
     setNumericResults([]);
     setIntervalBuckets([]);
     setInsightResult(null);
@@ -193,6 +204,10 @@ export default function DataVizMap(): React.ReactElement {
           setCentroidByCode((prev) => ({
             ...prev,
             [code]: computeCentroid(processed),
+          }));
+          setFrameCenterByCode((prev) => ({
+            ...prev,
+            [code]: computeBboxCenter(processed),
           }));
 
           if (mapRef.current && selectedRef.current.has(code)) {
@@ -336,7 +351,7 @@ export default function DataVizMap(): React.ReactElement {
     if (coloredPolygons.length) {
       const textData = numericResults
         .map(({ code, value }) => {
-          const position = centroidByCode[code];
+          const position = frameCenterByCode[code] ?? centroidByCode[code];
           if (!position) return null;
           const color = textColorByCode.get(code) ?? baseColorHex;
           return {
@@ -369,13 +384,19 @@ export default function DataVizMap(): React.ReactElement {
             data: textData,
             getPosition: (d) => d.position,
             getText: (d) => `${d.code}: ${d.value.toFixed(2)}`,
+            getTextAnchor: "middle",
             getAlignmentBaseline: "center",
             getColor: (d) => {
               const [r, g, b, a] = hexToRgba(d.color, 230);
               // Invert the RGB channels (255 - value)
               return [255 - r, 255 - g, 255 - b, a];
             },
-            getSize: 25,
+            getSize: () => {
+              const raw = mapZoom * 5;
+              const clamped = Math.max(10, Math.min(42, raw));
+              return clamped;
+            },
+            sizeUnits: "pixels",
           }),
         );
       }
@@ -388,6 +409,8 @@ export default function DataVizMap(): React.ReactElement {
     numericResults,
     intervalBuckets,
     centroidByCode,
+    frameCenterByCode,
+    mapZoom,
   ]);
 
   const handleInsightSubmit = useCallback(
@@ -422,7 +445,7 @@ export default function DataVizMap(): React.ReactElement {
 
       const prompt = [
         `Provide numeric ${trimmed} values for the countries below.`,
-        'Respond strictly using the following JSON format, containing two keys: "values" (map ISO alpha-3 code -> double) and "intervals" (array of objects with {"label": string, "range": [min, max], "color": hex}).',
+        'Respond strictly using the following JSON format, containing two keys: "values" (map ISO alpha-3 code -> double (don\'t put commas in the values)) and "intervals" (array of objects with {"label": string, "range": [min, max], "color": hex}).',
         'Example: {"values": {"USA": 123.4, "CAN": 98.1}, "intervals": [{"label": "Low", "range": [0, 50], "color": "#0ea5e9"}, ...]}. Use your best numeric estimates and leave out commentary.',
         countryLines,
       ].join("\n");
@@ -448,6 +471,14 @@ export default function DataVizMap(): React.ReactElement {
             }
           }
           setInsightResult(text || "");
+          try {
+            const pretty = JSON.stringify(JSON.parse(text ?? ""), null, 2);
+            console.log("[DataVizMap] Insight JSON", pretty);
+          } catch {
+            if (text && text.trim()) {
+              console.log("[DataVizMap] Insight text", text);
+            }
+          }
         }
       } catch (err) {
         if (!(err instanceof DOMException && err.name === "AbortError")) {
@@ -479,6 +510,27 @@ export default function DataVizMap(): React.ReactElement {
             const map =
               (ev as unknown as { target?: MaplibreMap | null }).target ?? null;
             mapRef.current = map;
+            if (map) {
+              try {
+                setMapZoom(map.getZoom());
+              } catch {
+                /* no-op */
+              }
+              let raf = 0 as unknown as number;
+              const update = () => {
+                raf = 0 as unknown as number;
+                try {
+                  setMapZoom(map.getZoom());
+                } catch {
+                  /* no-op */
+                }
+              };
+              const onMove = () => {
+                if (raf) return;
+                raf = requestAnimationFrame(update) as unknown as number;
+              };
+              map.on("move", onMove);
+            }
           } catch {
             /* ignore */
           }
@@ -500,7 +552,8 @@ export default function DataVizMap(): React.ReactElement {
         </button>
       </form>
       <aside className="altmap-hint">
-        <div className="altmap-hint__header">
+        <div className="altmap-hint__scroll">
+          <div className="altmap-hint__header">
           <h2>Visualization Sandbox</h2>
           <p>Select ISO alpha-3 countries to drive prototype layers.</p>
         </div>
@@ -618,14 +671,12 @@ export default function DataVizMap(): React.ReactElement {
             {insightError && (
               <div className="insight-output__error">{insightError}</div>
             )}
-            {insightResult && !insightLoading && (
-              <pre className="insight-output__content">{insightResult}</pre>
-            )}
           </div>
           <p className="altmap-hint__example">
             Tip: store prototypes in <code>src/experiments/</code> and use the
             selected set as inputs.
           </p>
+        </div>
         </div>
       </aside>
     </div>
@@ -882,6 +933,34 @@ function computeCentroid(polygons: BoundaryPolygon[]): [number, number] | null {
   }
   if (count === 0) return null;
   return [sumLng / count, sumLat / count];
+}
+
+function computeBboxCenter(polygons: BoundaryPolygon[]): [number, number] | null {
+  if (!Array.isArray(polygons) || polygons.length === 0) return null;
+  let minLng = Number.POSITIVE_INFINITY;
+  let minLat = Number.POSITIVE_INFINITY;
+  let maxLng = Number.NEGATIVE_INFINITY;
+  let maxLat = Number.NEGATIVE_INFINITY;
+  for (const polygon of polygons) {
+    for (const coord of polygon.coordinates) {
+      if (!Array.isArray(coord) || coord.length < 2) continue;
+      const [lng, lat] = coord;
+      if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue;
+      if (lng < minLng) minLng = lng;
+      if (lat < minLat) minLat = lat;
+      if (lng > maxLng) maxLng = lng;
+      if (lat > maxLat) maxLat = lat;
+    }
+  }
+  if (
+    !Number.isFinite(minLng) ||
+    !Number.isFinite(minLat) ||
+    !Number.isFinite(maxLng) ||
+    !Number.isFinite(maxLat)
+  ) {
+    return null;
+  }
+  return [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
 }
 
 function hexToRgba(hex: string, alpha = 255): [number, number, number, number] {

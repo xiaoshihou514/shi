@@ -12,7 +12,7 @@ import { PathLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import type { Layer } from "@deck.gl/core";
 import mapStyleRaw from "./assets/map_style.json?raw";
 import type { StyleSpecification } from "maplibre-gl";
-import { fetchPersonLifePath, type LifeHop } from "./PPX";
+import { fetchPersonLifePath, type LifeHop, normalSearchText } from "./PPX";
 import "./SearchBar.css";
 import "./Desc.css";
 
@@ -56,6 +56,13 @@ export default function PersonPath(): React.ReactElement {
   const [hops, setHops] = useState<GeocodedHop[]>([]);
   const [followCamera, setFollowCamera] = useState<boolean>(true);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+
+  // Person intro side panel state
+  const [showPanel, setShowPanel] = useState<boolean>(false);
+  const [personIntroHtml, setPersonIntroHtml] = useState<string | null>(null);
+  const [personIntroLoading, setPersonIntroLoading] = useState<boolean>(false);
+  const [personIntroError, setPersonIntroError] = useState<string | null>(null);
+  const introAbortRef = useRef<AbortController | null>(null);
 
   const [segIndex, setSegIndex] = useState<number>(0);
   const segStartTimeRef = useRef<number>(0);
@@ -107,6 +114,37 @@ export default function PersonPath(): React.ReactElement {
       setError(null);
       setSelectedIdx(null);
       try {
+        // fetch intro for person and show panel
+        introAbortRef.current?.abort();
+        setShowPanel(true);
+        const introCtrl = new AbortController();
+        introAbortRef.current = introCtrl;
+        void (async () => {
+          try {
+            setPersonIntroLoading(true);
+            setPersonIntroError(null);
+            setPersonIntroHtml(null);
+            const prompt = [
+              `Generate a concise HTML snippet about the famous person ${trimmed}.`,
+              "Cover birth, career highlights, impact, and key dates in 2–3 short paragraphs.",
+              "Use only semantic HTML (<p>, <strong>, <ul>, <li>); return HTML only, no quotes.",
+              'If citing, embed <sup><a href="URL">[n]</a></sup> inline; no references section.',
+            ].join(" ");
+            const { text } = await normalSearchText({
+              prompt,
+              searchType: "fast",
+              signal: introCtrl.signal,
+            });
+            if (!introCtrl.signal.aborted) setPersonIntroHtml(text.trim());
+          } catch (e: unknown) {
+            const anyErr = e as { message?: string };
+            if (!introCtrl.signal.aborted)
+              setPersonIntroError(anyErr?.message ?? "Failed to fetch intro");
+          } finally {
+            if (!introCtrl.signal.aborted) setPersonIntroLoading(false);
+          }
+        })();
+
         const ctrl = new AbortController();
         const raw = await fetchPersonLifePath(trimmed, ctrl.signal);
         // If no usable hops returned, surface a friendly error
@@ -352,8 +390,149 @@ export default function PersonPath(): React.ReactElement {
     return hops[selectedIdx] ?? null;
   }, [selectedIdx, hops]);
 
+  const onRetryIntro = useCallback(() => {
+    const trimmed = person.trim();
+    if (!trimmed) return;
+    introAbortRef.current?.abort();
+    const ctrl = new AbortController();
+    introAbortRef.current = ctrl;
+    (async () => {
+      try {
+        setPersonIntroLoading(true);
+        setPersonIntroError(null);
+        setPersonIntroHtml(null);
+        const prompt = [
+          `Generate a concise HTML snippet about the famous person ${trimmed}.`,
+          "Cover birth, career highlights, impact, and key dates in 2–3 short paragraphs.",
+          "Use only semantic HTML (<p>, <strong>, <ul>, <li>); return HTML only, no quotes.",
+          'If citing, embed <sup><a href="URL">[n]</a></sup> inline; no references section.',
+        ].join(" ");
+        const { text } = await normalSearchText({
+          prompt,
+          searchType: "fast",
+          signal: ctrl.signal,
+        });
+        if (!ctrl.signal.aborted) setPersonIntroHtml(text.trim());
+      } catch (e: unknown) {
+        const anyErr = e as { message?: string };
+        if (!ctrl.signal.aborted)
+          setPersonIntroError(anyErr?.message ?? "Failed to fetch intro");
+      } finally {
+        if (!ctrl.signal.aborted) setPersonIntroLoading(false);
+      }
+    })();
+  }, [person]);
+
   return (
     <div style={{ position: "relative", width: "100%", height: "100dvh" }}>
+      {/* Left-side person intro panel */}
+      {showPanel && (
+        <div className="desc-overlay">
+          <article className="desc-panel desc-panel--full" aria-live="polite">
+            <button
+              type="button"
+              className="desc-close"
+              aria-label="Close description panel"
+              onClick={() => setShowPanel(false)}
+            >
+              ×
+            </button>
+            <div className="desc-scroll">
+              <header className="desc-header">
+                <div className="desc-header__badge">Person Snapshot</div>
+                <h2 className="desc-header__title">{person || "Person"}</h2>
+                <div className="desc-header__status">
+                  {busy && (
+                    <span className="desc-pill desc-pill--loading">
+                      Tracing path…
+                    </span>
+                  )}
+                  {!busy && error && (
+                    <span className="desc-pill desc-pill--error" role="alert">
+                      {error}
+                    </span>
+                  )}
+                </div>
+              </header>
+
+              <div className="desc-body">
+                <section className="desc-overview">
+                  <div className="desc-overview__header">
+                    <h3>Overview</h3>
+                    {person && <p>A brief introduction and key highlights.</p>}
+                  </div>
+                  <div className="desc-overview__body">
+                    {personIntroLoading && (
+                      <div className="desc-skeleton-group" aria-hidden="true">
+                        <span className="desc-skeleton desc-skeleton--wide" />
+                        <span className="desc-skeleton desc-skeleton--medium" />
+                        <span className="desc-skeleton desc-skeleton--short" />
+                      </div>
+                    )}
+
+                    {!personIntroLoading && personIntroError && (
+                      <div className="desc-error" role="alert">
+                        <p>We couldn&apos;t fetch the briefing: {personIntroError}</p>
+                        <button
+                          type="button"
+                          className="desc-button"
+                          onClick={onRetryIntro}
+                        >
+                          Try again
+                        </button>
+                      </div>
+                    )}
+
+                    {!personIntroLoading && !personIntroError && personIntroHtml && (
+                      <div
+                        className="desc-body__text"
+                        dangerouslySetInnerHTML={{ __html: personIntroHtml }}
+                      />
+                    )}
+
+                    {!personIntroLoading && !personIntroError && !personIntroHtml && person && (
+                      <p className="desc-body__placeholder">
+                        No overview is available right now. Try another person.
+                      </p>
+                    )}
+
+                    {!person && (
+                      <p className="desc-body__placeholder">
+                        Enter a famous name above to see their overview.
+                      </p>
+                    )}
+                  </div>
+                </section>
+              </div>
+            </div>
+          </article>
+        </div>
+      )}
+
+      {!showPanel && (
+        <button
+          type="button"
+          style={{
+            position: "absolute",
+            top: 16,
+            left: 16,
+            padding: "6px 12px",
+            borderRadius: 999,
+            border: "1px solid rgba(124, 92, 255, 0.35)",
+            background: "rgba(12, 18, 38, 0.85)",
+            color: "#f3f5ff",
+            fontSize: "0.75rem",
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            cursor: "pointer",
+            pointerEvents: "auto",
+            zIndex: 120,
+          }}
+          onClick={() => setShowPanel(true)}
+        >
+          Overview
+        </button>
+      )}
       <MLMap
         initialViewState={{ longitude: 10, latitude: 50, zoom: 3.5 }}
         style={{ width: "100%", height: "100%" }}
@@ -500,7 +679,7 @@ export default function PersonPath(): React.ReactElement {
       )}
 
       {/* Empty-state guidance (similar to Desc.tsx) */}
-      {hops.length === 0 && (
+      {/* {hops.length === 0 && (
         <div className="desc-overlay">
           <div className="desc-panel desc-panel--empty">
             <div className="desc-empty" aria-live="polite">
@@ -518,7 +697,7 @@ export default function PersonPath(): React.ReactElement {
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* City popup moved inside MLMap to access map context */}
     </div>

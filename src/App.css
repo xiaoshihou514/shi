@@ -375,6 +375,24 @@
   box-shadow: 0 18px 40px rgba(8, 15, 26, 0.28);
 }
 
+.altmap-hint__scroll {
+  /* viewport height minus panel bottom offset (32px) minus panel vertical padding (16px * 2) */
+  max-height: calc(100dvh - 32px - 32px);
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.altmap-hint__scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.altmap-hint__scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+}
+
+/* scroll buttons removed per request */
+
 .altmap-hint__header h2 {
   margin: 0;
   font-size: 18px;
@@ -683,5 +701,10 @@
     left: 16px;
     right: 16px;
     bottom: 88px;
+  }
+
+  .altmap-hint__scroll {
+    /* mobile: viewport height minus larger bottom offset (88px) minus padding */
+    max-height: calc(100dvh - 88px - 32px);
   }
 }
