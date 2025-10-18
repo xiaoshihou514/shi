@@ -24,7 +24,7 @@ export default function TimelinePanel(props: TimelinePanelProps): React.ReactEle
     const displayCity = cityName ?? null;
 
     if (!hasSelection) {
-        return null;
+        return <div></div>; // not null so that the types match
     }
 
     return (
