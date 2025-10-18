@@ -196,7 +196,9 @@ export default function DataVizMap(): React.ReactElement {
           }));
 
           if (mapRef.current && selectedRef.current.has(code)) {
-            const [minLng, minLat, maxLng, maxLat] = bbox(data as any);
+            const [minLng, minLat, maxLng, maxLat] = (bbox as unknown as (
+              geojson: unknown,
+            ) => [number, number, number, number])(data);
             if (
               [minLng, minLat, maxLng, maxLat].every((n) => Number.isFinite(n))
             ) {
