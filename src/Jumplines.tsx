@@ -5,7 +5,7 @@ import {TripsLayer} from '@deck.gl/geo-layers';
 import {ScatterplotLayer, TextLayer, ArcLayer} from '@deck.gl/layers';
 import type {Layer} from '@deck.gl/core';
 import * as turf from '@turf/turf';
-import {normalSearchText, translatePOI} from './PPX';
+import {normalSearchText} from './PPX';
 import * as maplibregl from 'maplibre-gl';
 
 type Point = { lat: number; lon: number };
@@ -42,6 +42,7 @@ export default function Jumplines(props: Props): React.ReactElement | null {
     const [jumps, setJumps] = useState<JumpDatum[]>([]);
     const [time, setTime] = useState(0);
     const abortRef = useRef<AbortController | null>(null);
+    // removed translate overlay/JSON; unified findCityWithPPX provides English output
 
     const colorByCategory = useCallback((c?: string): [number, number, number] => {
         const key = (c ?? '').toLowerCase();
@@ -113,12 +114,7 @@ export default function Jumplines(props: Props): React.ReactElement | null {
 
         (async () => {
             try {
-                // Normalize name to English
-                let baseName = cityName;
-                try {
-                    const { text: translated } = await translatePOI(cityName);
-                    if (translated?.trim()) baseName = translated.trim();
-                } catch { /* no-op: keep original */ }
+                const baseName = cityName;
                 if (ctrl.signal.aborted) return;
 
                 // Prompt for related cities

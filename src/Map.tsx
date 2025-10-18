@@ -5,9 +5,8 @@ import type {MapLayerMouseEvent} from 'maplibre-gl';
 import type { StyleSpecification } from 'maplibre-gl';
 import type { TimelineEvent, TimelineHandle } from './Timeline';
 import Desc from './Desc';
-// import Jumplines from './Jumplines';
 import TimelinePanel from './TimelinePanel';
-import {proSearchText, translatePOI} from './PPX';
+import {proSearchText, findCityWithPPX} from './PPX';
 import mapStyleRaw from './assets/map_style.json?raw';
 
 type ClickedCoord = {
@@ -20,87 +19,26 @@ const MAP_STYLE = JSON.parse(mapStyleRaw) as StyleSpecification;
 
 // panel UI moved to Desc component
 
-const LOCATION_KEYWORDS = [
-    'city',
-    'town',
-    'village',
-    'municipality',
-    'district',
-    'prefecture',
-    'province',
-    'state',
-    'region',
-    'county',
-    'island',
-    'metropolitan'
-];
-
-function deriveLocationScope(displayName?: string | null, address?: Record<string, string>): string | null {
-    const segments = typeof displayName === 'string'
-        ? displayName.split(',').map(segment => segment.trim()).filter(Boolean)
-        : [];
-
-    let scope: string | null = null;
-
-    if (segments.length > 0) {
-        const keywordSegment = segments.find(segment => {
-            const lower = segment.toLowerCase();
-            return LOCATION_KEYWORDS.some(keyword => lower.includes(keyword));
-        });
-        scope = (keywordSegment ?? segments[0]).trim();
-    }
-
-    const addressCandidate = LOCATION_KEYWORDS
-        .map(keyword => address?.[keyword])
-        .find(value => typeof value === 'string' && value.trim().length > 0);
-
-    if (!scope && addressCandidate) {
-        scope = addressCandidate.trim();
-    }
-
-    if (scope && /\d/.test(scope) && segments.length > 1) {
-        const next = segments.find(segment => !/\d/.test(segment));
-        if (next) {
-            scope = `${scope}, ${next}`;
-        }
-    }
-
-    if (!scope && segments.length > 0) {
-        scope = segments.slice(0, Math.min(2, segments.length)).join(', ');
-    }
-
-    if (!scope && typeof displayName === 'string') {
-        scope = displayName.trim();
-    }
-
-    if (!scope) return null;
-
-    const limitedSegments = scope.split(',').map(part => part.trim()).filter(Boolean);
-    if (limitedSegments.length > 2) {
-        scope = limitedSegments.slice(0, 2).join(', ');
-    }
-
-    return scope.trim();
-}
 
 export default function ClickableMap(): React.ReactElement {
     const [clicked, setClicked] = useState<ClickedCoord | null>(null);
-    const [city, setCity] = useState<string | null>(null);
-    const [cityEnglish, setCityEnglish] = useState<string | null>(null);
+    const [cityName, setCityName] = useState<string | null>(null);
+    const [cityDetailedName, setCityDetailedName] = useState<string | null>(null);
     const [showDesc, setShowDesc] = useState<boolean>(true);
     const [showTimeline, setShowTimeline] = useState<boolean>(true);
     const abortRef = useRef<AbortController | null>(null);
     const timelineRef = useRef<TimelineHandle | null>(null);
     const [ppxLoading, setPpxLoading] = useState<boolean>(false);
     const [ppxError, setPpxError] = useState<string | null>(null);
+    // removed translate overlay/JSON; unified findCityWithPPX provides English output
 
 
     const reverseGeocode = useCallback(async (lat: number, lon: number) => {
         abortRef.current?.abort();
         const ctrl = new AbortController();
         abortRef.current = ctrl;
-        setCity(null);
-        setCityEnglish(null);
+        setCityName(null);
+        setCityDetailedName(null);
         try {
             const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=en`;
             const resp = await fetch(url, {
@@ -111,11 +49,12 @@ export default function ClickableMap(): React.ReactElement {
             const data = await resp.json();
             const addr: Record<string, string> | undefined = data?.address;
             const displayName = typeof data?.display_name === 'string' ? data.display_name : null;
-            const detectedCity = addr?.city || addr?.town || addr?.village || addr?.county || addr?.state || null;
-            const scopedName = deriveLocationScope(displayName, addr) ?? detectedCity ?? displayName ?? null;
+            const ppxCity = await findCityWithPPX({ displayName, address: addr ?? null });
+            const cityNameVal = ppxCity?.city ?? null;
+            const cityDetailedNameVal = ppxCity?.detailedName ?? null;
             if (!ctrl.signal.aborted) {
-                setCity(scopedName);
-                setCityEnglish(scopedName);
+                setCityName(cityNameVal);
+                setCityDetailedName(cityDetailedNameVal);
             }
         } catch (err: unknown) {
             const anyErr = err as { name?: string; message?: string };
@@ -124,32 +63,6 @@ export default function ClickableMap(): React.ReactElement {
             }
         }
     }, []);
-
-    useEffect(() => {
-        if (!city) {
-            setCityEnglish(null);
-            return;
-        }
-
-        let cancelled = false;
-        (async () => {
-            try {
-                const { text } = await translatePOI(city);
-                if (!cancelled) {
-                    const translated = text?.trim();
-                    setCityEnglish(translated && translated.length > 0 ? translated : city);
-                }
-            } catch (error) {
-                if (!cancelled) {
-                    setCityEnglish(city);
-                }
-            }
-        })();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [city]);
 
     const onMapClick = useCallback((e: MapLayerMouseEvent) => {
         const {lng, lat} = e.lngLat ?? {};
@@ -218,8 +131,8 @@ export default function ClickableMap(): React.ReactElement {
     }, []);
 
     useEffect(() => {
-        const scopedCity = cityEnglish?.trim() || city?.trim();
-        if (!scopedCity) {
+        
+        if (!cityName || !cityDetailedName) {
             timelineRef.current?.clearEvents();
             setPpxLoading(false);
             setPpxError(null);
@@ -233,7 +146,7 @@ export default function ClickableMap(): React.ReactElement {
 
         (async () => {
             try {
-                const prompt = buildPrompt(scopedCity);
+                const prompt = buildPrompt(cityDetailedName);
                 const {text} = await proSearchText({prompt, searchType: 'pro'});
                 const events = tryParseEvents(text);
                 if (events.length === 0) {
@@ -252,15 +165,15 @@ export default function ClickableMap(): React.ReactElement {
                 setPpxLoading(false);
             }
         })();
-    }, [city, cityEnglish, buildPrompt, tryParseEvents]);
+    }, [cityName, cityDetailedName, buildPrompt, tryParseEvents]);
 
     return (
         <div style={{position: 'relative', width: '100%', height: '100dvh'}}>
             {showDesc && (
                 <Desc
                     clicked={clicked}
-                    city={city}
-                    cityEnglish={cityEnglish}
+                    cityName={cityName}
+                    cityDetailedName={cityDetailedName}
                     ppxLoading={ppxLoading}
                     ppxError={ppxError}
                     onClose={() => setShowDesc(false)}
@@ -269,8 +182,8 @@ export default function ClickableMap(): React.ReactElement {
             {showTimeline && (
                 <TimelinePanel
                     clicked={clicked}
-                    city={city}
-                    cityEnglish={cityEnglish}
+                    cityName={cityName}
+                    cityDetailedName={cityDetailedName}
                     ppxLoading={ppxLoading}
                     ppxError={ppxError}
                     timelineRef={timelineRef}
@@ -288,9 +201,9 @@ export default function ClickableMap(): React.ReactElement {
                   mapStyle={MAP_STYLE}
                 onClick={onMapClick}
             >
-                {/*{city && clicked && (*/}
-                {/*    <Jumplines origin={clicked} cityName={city} autoZoom />*/}
-                {/*)}*/}
+                {/* {city && clicked && (
+                    <Jumplines origin={clicked} cityName={city} autoZoom />
+                )} */}
                 {clicked && (
                     <Marker longitude={clicked.lon} latitude={clicked.lat} anchor="center">
                         <div
@@ -306,6 +219,7 @@ export default function ClickableMap(): React.ReactElement {
                     </Marker>
                 )}
             </MLMap>
+            {/* translateJson overlay removed: unified findCityWithPPX ensures English output */}
         </div>
     );
 }

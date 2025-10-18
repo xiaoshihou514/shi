@@ -114,18 +114,58 @@ export async function proSearchText(params: StreamProSearchParams): Promise<{
     }
 }
 
-export async function translatePOI(name: string): Promise<{
-    text: string
-    usage: ProSearchStreamItem['usage']
-    searchResults: ProSearchStreamItem['searchResults']
-}> {
-    return proSearchText({
-        prompt: [
-            'You are a professional translator. For the city below, translate it to English if not already so.',
-            `City: ${name}`,
-        ].join('\n'),
-        searchType: 'fast',
-    })
+export async function findCityWithPPX(params: {
+    displayName?: string | null
+    address?: Record<string, string> | null
+    name?: string | null
+}): Promise<{ city?: string; detailedName?: string } | null> {
+    const { displayName = null, address = null, name = null } = params ?? {};
+    const payload = {
+        display: typeof displayName === 'string' ? displayName : '',
+        address: address ?? {},
+        name: typeof name === 'string' ? name : '',
+    };
+    try {
+        const prompt = [
+            'Task: Extract the best city-level name for the given location input and output it in English (en).',
+            'Rules:',
+            '- Prefer city/town/municipality/district-level entities over states or countries.',
+            '- If input is already English, keep it; otherwise translate to English.',
+            '- Avoid street-level details; keep names concise (<= 2 comma-separated parts).',
+            'Return STRICT JSON only in the form: {"city": string, "detailedName": string}.',
+            '- "city": the concise city-level name in English.',
+            '- "detailedName": an English, human-readable display name derived from display_name/address.',
+            `input_name: ${payload.name}`,
+            `input_display_name: ${payload.display}`,
+            `input_address_json: ${JSON.stringify(payload.address)}`,
+        ].join('\n');
+        const { text } = await normalSearchText({ prompt, searchType: 'fast' });
+
+        const tryParseObject = (t: string): unknown => {
+            try { return JSON.parse(t); } catch {
+                const first = t.indexOf('{');
+                const last = t.lastIndexOf('}');
+                if (first !== -1 && last !== -1 && last > first) {
+                    try { return JSON.parse(t.slice(first, last + 1)); } catch { /* no-op */ }
+                }
+                return null;
+            }
+        };
+        const parsed = tryParseObject(text);
+        if (parsed && typeof parsed === 'object' && parsed !== null) {
+            const obj = parsed as { city?: unknown; detailedName?: unknown };
+            const cityVal = obj.city;
+            const detailedNameVal = obj.detailedName;
+            if (typeof cityVal === 'string' && typeof detailedNameVal === 'string') {
+                const cityTrimmed = cityVal.trim();
+                const detailedNameTrimmed = detailedNameVal.trim();
+                if (cityTrimmed.length > 0 && detailedNameTrimmed.length > 0) return { city: cityTrimmed, detailedName: detailedNameTrimmed };
+            }
+        }
+        return null;
+    } catch {
+        return null;
+    }
 }
 
 export async function normalSearchText(params: StreamProSearchParams): Promise<{
