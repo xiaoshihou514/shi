@@ -24,7 +24,7 @@ export default function Desc(props: DescProps): React.ReactElement {
     const [descError, setDescError] = useState<string | null>(null);
     const descAbortRef = useRef<AbortController | null>(null);
 
-    const fetchDescription = useCallback(async (targetCity: string, externalCtrl?: AbortController) => {
+    const fetchDescription = useCallback(async (targetCityName: string | null, targetCityDetailedName: string | null, externalCtrl?: AbortController) => {
         const ctrl = externalCtrl ?? new AbortController();
         descAbortRef.current = ctrl;
         setDescLoading(true);
@@ -32,13 +32,15 @@ export default function Desc(props: DescProps): React.ReactElement {
         setDescText(null);
         try {
             const prompt = [
-                `Generate a concise HTML snippet about the location ${targetCity}.`,
-                'Stay focused on the named location; only broaden the scope when the place itself lacks sufficient historical material.',
+                'You are a concise historian.',
+                `Generate a concise HTML snippet about ${targetCityName}.`,
+                `Use the ${targetCityDetailedName} only to restrict the geographic region and keep the search concise.`,
                 'Use semantic tags only (e.g., <p>, <strong>, <ul>, <li>).',
                 'Highlight history, geography, and notable facts in 2-3 brief paragraphs or a short list.',
                 'Any references must be inserted inline using <sup><a href="URL">[n]</a></sup> style, matching APA-like numbering. Do not append a separate references section.',
-                'Return HTML only without surrounding quotes.'
+                'Return HTML only without surrounding quotes.',
             ].join(' ');
+            console.log('cityName', targetCityName);
             const { text } = await normalSearchText({ prompt, searchType: 'fast' });
             if (!ctrl.signal.aborted) setDescText(text.trim());
         } catch (e: unknown) {
@@ -54,23 +56,20 @@ export default function Desc(props: DescProps): React.ReactElement {
         descAbortRef.current?.abort();
         setDescText(null);
         setDescError(null);
-        const normalizedCity = cityDetailedName?.trim() 
-        if (!normalizedCity) {
+        if (!cityName || !cityDetailedName) {
             setDescLoading(false);
             return;
         }
         const ctrl = new AbortController();
-        fetchDescription(normalizedCity, ctrl);
+        fetchDescription(cityName, cityDetailedName, ctrl);
         return () => ctrl.abort();
-    }, [cityDetailedName, fetchDescription]);
+    }, [cityName, cityDetailedName, fetchDescription]);
 
     const onRetry = useCallback(() => {
-        const normalizedCity = cityDetailedName?.trim()
-        if (!normalizedCity) return;
         descAbortRef.current?.abort();
         const ctrl = new AbortController();
-        fetchDescription(normalizedCity, ctrl);
-    }, [cityDetailedName, fetchDescription]);
+        fetchDescription(cityName, cityDetailedName, ctrl);
+    }, [cityName, cityDetailedName, fetchDescription]);
 
     const formattedLat = clicked ? `${clicked.lat.toFixed(3)}°` : null;
     const formattedLon = clicked ? `${clicked.lon.toFixed(3)}°` : null;

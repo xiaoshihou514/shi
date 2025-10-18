@@ -74,12 +74,13 @@ export default function ClickableMap(): React.ReactElement {
         }
     }, [reverseGeocode]);
 
-    const buildPrompt = useCallback((locationName: string) => {
+    const buildPrompt = useCallback((cityName: string, cityDetailedName: string) => {
         return [
-            'You are a concise historian. For the location below, list ~8 chronological key historical events that are directly tied to it.',
-            'Do not broaden the scope beyond the named location unless absolutely necessary.',
+            'You are a concise historian. List ~8 chronological key historical events that are directly tied to the City Name.',
+            'Use the City Detailed Name only to restrict the geographic region to make a concise search.',
             'Return JSON array only. Fields must be: id (string), date (YYYY-MM-DD or best-known date), title, description, icon (emoji), color (hex).',
-            `Location: ${locationName}`,
+            `City Name: ${cityName}`,
+            `City Detailed Name: ${cityDetailedName}`,
         ].join('\n');
     }, []);
 
@@ -146,7 +147,7 @@ export default function ClickableMap(): React.ReactElement {
 
         (async () => {
             try {
-                const prompt = buildPrompt(cityDetailedName);
+                const prompt = buildPrompt(cityName, cityDetailedName);
                 const {text} = await proSearchText({prompt, searchType: 'pro'});
                 const events = tryParseEvents(text);
                 if (events.length === 0) {
