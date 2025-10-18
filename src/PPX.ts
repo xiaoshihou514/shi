@@ -132,15 +132,47 @@ export async function proSearchText(
   };
 }
 
-export type LocationMedia = {
+export type Media = {
   url: string;
   caption?: string;
 };
 
-export async function fetchLocationMedia(
+export async function fetchPersonMedia(
+  name: string,
+  signal?: AbortSignal,
+): Promise<Media[]> {
+  const prompt = `Image of ${name}`;
+
+  const resp = await fetch("/api/ppx/media", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt,
+      mediaOverrides: {
+        return_images: true,
+      },
+    }),
+    signal,
+  });
+
+  if (!resp.ok) {
+    const msg = await safeReadText(resp);
+    throw new Error(msg || `Media request failed: HTTP ${resp.status}`);
+  }
+
+  const result = await resp.json();
+  return (result.images as Array<{ image_url: string; title: string }>).map(
+    (e) => ({
+      url: e.image_url,
+      caption: e.title,
+    }),
+  );
+}
+
+export async function fetchMedia(
   locationName: string,
   signal?: AbortSignal,
-): Promise<LocationMedia[]> {
+): Promise<Media[]> {
   const prompt = `cityscape of ${locationName}`;
 
   const resp = await fetch("/api/ppx/media", {

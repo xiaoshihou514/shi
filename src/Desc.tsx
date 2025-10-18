@@ -1,9 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import {
-  fetchLocationMedia,
-  type LocationMedia,
-  normalSearchText,
-} from "./PPX";
+import { fetchMedia, type Media, normalSearchText } from "./PPX";
 import "./Desc.css";
 
 type ClickedCoord = {
@@ -28,7 +24,7 @@ export default function Desc(props: DescProps): React.ReactElement {
   const [descLoading, setDescLoading] = useState<boolean>(false);
   const [descError, setDescError] = useState<string | null>(null);
   const descAbortRef = useRef<AbortController | null>(null);
-  const [mediaItem, setMediaItem] = useState<LocationMedia | null>(null);
+  const [mediaItem, setMediaItem] = useState<Media | null>(null);
   const [mediaLoading, setMediaLoading] = useState<boolean>(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const mediaAbortRef = useRef<AbortController | null>(null);
@@ -70,7 +66,7 @@ export default function Desc(props: DescProps): React.ReactElement {
       setMediaError(null);
       setMediaItem(null);
       try {
-        const media = await fetchLocationMedia(targetCity, ctrl.signal);
+        const media = await fetchMedia(targetCity, ctrl.signal);
         console.log(media[0] ?? null);
         setMediaItem(media[0] ?? null);
       } catch (e: unknown) {

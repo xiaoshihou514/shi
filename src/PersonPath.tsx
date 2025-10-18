@@ -12,7 +12,13 @@ import { PathLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import type { Layer } from "@deck.gl/core";
 import mapStyleRaw from "./assets/map_style.json?raw";
 import type { StyleSpecification } from "maplibre-gl";
-import { fetchPersonLifePath, type LifeHop, normalSearchText } from "./PPX";
+import {
+  fetchPersonMedia,
+  fetchPersonLifePath,
+  type LifeHop,
+  type Media,
+  normalSearchText,
+} from "./PPX";
 import "./SearchBar.css";
 import "./Desc.css";
 
@@ -56,6 +62,11 @@ export default function PersonPath(): React.ReactElement {
   const [hops, setHops] = useState<GeocodedHop[]>([]);
   const [followCamera, setFollowCamera] = useState<boolean>(true);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [mediaItem, setMediaItem] = useState<Media | null>(null);
+  const [mediaLoading, setMediaLoading] = useState<boolean>(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
+  const [activePerson, setActivePerson] = useState<string | null>(null);
+  const mediaAbortRef = useRef<AbortController | null>(null);
 
   // Person intro side panel state
   const [showPanel, setShowPanel] = useState<boolean>(false);
@@ -110,9 +121,14 @@ export default function PersonPath(): React.ReactElement {
     async (name: string) => {
       const trimmed = name.trim();
       if (!trimmed) return;
+      setActivePerson(trimmed);
       setBusy(true);
       setError(null);
       setSelectedIdx(null);
+      mediaAbortRef.current?.abort();
+      setMediaItem(null);
+      setMediaError(null);
+      setMediaLoading(false);
       try {
         // fetch intro for person and show panel
         introAbortRef.current?.abort();
@@ -390,6 +406,55 @@ export default function PersonPath(): React.ReactElement {
     return hops[selectedIdx] ?? null;
   }, [selectedIdx, hops]);
 
+  const fallbackHop = useMemo(() => {
+    if (hops.length === 0) return null;
+    const lastIdx = Math.max(0, hops.length - 1);
+    const idx = Math.min(segIndex, lastIdx);
+    return hops[idx] ?? null;
+  }, [hops, segIndex]);
+
+  const mediaTargetCity = (selectedHop ?? fallbackHop)?.city ?? null;
+
+  const fetchPersonImage = useCallback(
+    async (personName: string, externalCtrl?: AbortController) => {
+      const ctrl = externalCtrl ?? new AbortController();
+      mediaAbortRef.current = ctrl;
+      setMediaLoading(true);
+      setMediaError(null);
+      setMediaItem(null);
+      try {
+        const media = await fetchPersonMedia(personName, ctrl.signal);
+        if (!ctrl.signal.aborted) setMediaItem(media[0] ?? null);
+      } catch (e: unknown) {
+        if (!ctrl.signal.aborted) {
+          const anyErr = e as { message?: string };
+          setMediaError(anyErr?.message ?? "Unable to load imagery");
+        }
+      } finally {
+        if (!ctrl.signal.aborted) setMediaLoading(false);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    mediaAbortRef.current?.abort();
+
+    const normalizedPerson = activePerson?.trim();
+    if (!showPanel || !normalizedPerson) {
+      setMediaLoading(false);
+      setMediaError(null);
+      setMediaItem(null);
+      return;
+    }
+
+    const ctrl = new AbortController();
+    fetchPersonImage(normalizedPerson, ctrl);
+    return () => {
+      ctrl.abort();
+    };
+  }, [activePerson, showPanel, fetchPersonImage]);
+
   const onRetryIntro = useCallback(() => {
     const trimmed = person.trim();
     if (!trimmed) return;
@@ -455,6 +520,40 @@ export default function PersonPath(): React.ReactElement {
                 </div>
               </header>
 
+              {mediaLoading && activePerson && <div></div>}
+
+              {!mediaLoading && mediaItem && (
+                <figure className="desc-media">
+                  <img
+                    src={mediaItem.url}
+                    alt={
+                      mediaItem.caption ||
+                      `${activePerson ?? "Highlighted person"} portrait`
+                    }
+                  />
+                  {(mediaItem.caption || activePerson || mediaTargetCity) && (
+                    <figcaption>
+                      {mediaItem.caption && <span>{mediaItem.caption}</span>}
+                      {(activePerson || mediaTargetCity) && (
+                        <span className="desc-media__credit">
+                          {activePerson ? `Portrait: ${activePerson}` : null}
+                          {activePerson && mediaTargetCity ? " · " : null}
+                          {mediaTargetCity
+                            ? `Spotlight city: ${mediaTargetCity}`
+                            : null}
+                        </span>
+                      )}
+                    </figcaption>
+                  )}
+                </figure>
+              )}
+
+              {!mediaLoading && mediaError && (
+                <div className="desc-media desc-media--error" role="alert">
+                  {mediaError}
+                </div>
+              )}
+
               <div className="desc-body">
                 <section className="desc-overview">
                   <div className="desc-overview__header">
@@ -472,7 +571,10 @@ export default function PersonPath(): React.ReactElement {
 
                     {!personIntroLoading && personIntroError && (
                       <div className="desc-error" role="alert">
-                        <p>We couldn&apos;t fetch the briefing: {personIntroError}</p>
+                        <p>
+                          We couldn&apos;t fetch the briefing:{" "}
+                          {personIntroError}
+                        </p>
                         <button
                           type="button"
                           className="desc-button"
@@ -483,18 +585,24 @@ export default function PersonPath(): React.ReactElement {
                       </div>
                     )}
 
-                    {!personIntroLoading && !personIntroError && personIntroHtml && (
-                      <div
-                        className="desc-body__text"
-                        dangerouslySetInnerHTML={{ __html: personIntroHtml }}
-                      />
-                    )}
+                    {!personIntroLoading &&
+                      !personIntroError &&
+                      personIntroHtml && (
+                        <div
+                          className="desc-body__text"
+                          dangerouslySetInnerHTML={{ __html: personIntroHtml }}
+                        />
+                      )}
 
-                    {!personIntroLoading && !personIntroError && !personIntroHtml && person && (
-                      <p className="desc-body__placeholder">
-                        No overview is available right now. Try another person.
-                      </p>
-                    )}
+                    {!personIntroLoading &&
+                      !personIntroError &&
+                      !personIntroHtml &&
+                      person && (
+                        <p className="desc-body__placeholder">
+                          No overview is available right now. Try another
+                          person.
+                        </p>
+                      )}
 
                     {!person && (
                       <p className="desc-body__placeholder">
