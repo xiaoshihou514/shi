@@ -4,6 +4,26 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
+    server: {
+        proxy: {
+            // Usage: fetch("/geo/EGY/ADM0")
+            "/geo": {
+                target: "https://github.com",
+                changeOrigin: true,
+                rewrite: (p) => {
+                    // Expect: /geo/:cc/:level  e.g. /geo/EGY/ADM1
+                    const m = p.match(/^\/geo\/([^/]+)\/(ADM[0-9]+)$/i);
+                    if (!m) return p; // fallback (no rewrite)
+                    const cc = m[1].toUpperCase();
+                    const level = m[2].toUpperCase();
+                    // Pin to a commit (replace with your ref if needed)
+                    const ref = "9469f09";
+                    return `/wmgeolab/geoBoundaries/raw/${ref}/releaseData/gbOpen/${cc}/${level}/geoBoundaries-${cc}-${level}.geojson`;
+                },
+            },
+        },
+    },
+
     plugins: [
         react(),
         {

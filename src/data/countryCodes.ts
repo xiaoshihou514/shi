@@ -5,7 +5,7 @@ export type CountryCodeRecord = {
 
 export const COUNTRY_CODES: CountryCodeRecord[] = [
     {code: 'AFG', name: 'Afghanistan'},
-    {code: 'ALA', name: 'Åland Islands'},
+{code: 'ALA', name: 'Aland Islands'},
     {code: 'ALB', name: 'Albania'},
     {code: 'DZA', name: 'Algeria'},
     {code: 'ASM', name: 'American Samoa'},
@@ -58,10 +58,10 @@ export const COUNTRY_CODES: CountryCodeRecord[] = [
     {code: 'COD', name: 'Congo, Democratic Republic of the'},
     {code: 'COK', name: 'Cook Islands'},
     {code: 'CRI', name: 'Costa Rica'},
-    {code: 'CIV', name: "Côte d'Ivoire"},
+{code: 'CIV', name: "Cote d'Ivoire"},
     {code: 'HRV', name: 'Croatia'},
     {code: 'CUB', name: 'Cuba'},
-    {code: 'CUW', name: 'Curaçao'},
+{code: 'CUW', name: 'Curacao'},
     {code: 'CYP', name: 'Cyprus'},
     {code: 'CZE', name: 'Czechia'},
     {code: 'DNK', name: 'Denmark'},
@@ -185,11 +185,11 @@ export const COUNTRY_CODES: CountryCodeRecord[] = [
     {code: 'PRT', name: 'Portugal'},
     {code: 'PRI', name: 'Puerto Rico'},
     {code: 'QAT', name: 'Qatar'},
-    {code: 'REU', name: 'Réunion'},
+{code: 'REU', name: 'Reunion'},
     {code: 'ROU', name: 'Romania'},
     {code: 'RUS', name: 'Russian Federation'},
     {code: 'RWA', name: 'Rwanda'},
-    {code: 'BLM', name: 'Saint Barthélemy'},
+{code: 'BLM', name: 'Saint Barthelemy'},
     {code: 'SHN', name: 'Saint Helena, Ascension and Tristan da Cunha'},
     {code: 'KNA', name: 'Saint Kitts and Nevis'},
     {code: 'LCA', name: 'Saint Lucia'},
@@ -231,7 +231,7 @@ export const COUNTRY_CODES: CountryCodeRecord[] = [
     {code: 'TON', name: 'Tonga'},
     {code: 'TTO', name: 'Trinidad and Tobago'},
     {code: 'TUN', name: 'Tunisia'},
-    {code: 'TUR', name: 'Türkiye'},
+{code: 'TUR', name: 'Turkey'},
     {code: 'TKM', name: 'Turkmenistan'},
     {code: 'TCA', name: 'Turks and Caicos Islands'},
     {code: 'TUV', name: 'Tuvalu'},
@@ -254,4 +254,3 @@ export const COUNTRY_CODES: CountryCodeRecord[] = [
     {code: 'ZMB', name: 'Zambia'},
     {code: 'ZWE', name: 'Zimbabwe'}
 ];
-
