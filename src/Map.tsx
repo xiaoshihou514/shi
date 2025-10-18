@@ -248,6 +248,56 @@ export default function ClickableMap(): React.ReactElement {
                 />
             )}
 
+            {!showDesc && (
+                <button
+                    type="button"
+                    style={{
+                        position: 'absolute',
+                        top: 16,
+                        left: 16,
+                        padding: '6px 12px',
+                        borderRadius: 999,
+                        border: '1px solid rgba(124, 92, 255, 0.35)',
+                        background: 'rgba(12, 18, 38, 0.85)',
+                        color: '#f3f5ff',
+                        fontSize: '0.75rem',
+                        letterSpacing: '0.12em',
+                        textTransform: 'uppercase',
+                        cursor: 'pointer',
+                        pointerEvents: 'auto',
+                        zIndex: 120
+                    }}
+                    onClick={() => setShowDesc(true)}
+                >
+                    Overview
+                </button>
+            )}
+
+            {!showTimeline && (
+                <button
+                    type="button"
+                    style={{
+                        position: 'absolute',
+                        top: 16,
+                        right: 16,
+                        padding: '6px 12px',
+                        borderRadius: 999,
+                        border: '1px solid rgba(124, 92, 255, 0.35)',
+                        background: 'rgba(12, 18, 38, 0.85)',
+                        color: '#f3f5ff',
+                        fontSize: '0.75rem',
+                        letterSpacing: '0.12em',
+                        textTransform: 'uppercase',
+                        cursor: 'pointer',
+                        pointerEvents: 'auto',
+                        zIndex: 120
+                    }}
+                    onClick={() => setShowTimeline(true)}
+                >
+                    Insights
+                </button>
+            )}
+
             <MLMap
                 initialViewState={{
                     longitude: 10,
