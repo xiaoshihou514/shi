@@ -5,7 +5,7 @@ import type {MapLayerMouseEvent} from 'maplibre-gl';
 import type { StyleSpecification } from 'maplibre-gl';
 import type { TimelineEvent, TimelineHandle } from './Timeline';
 import Desc from './Desc';
-import Jumplines from './Jumplines';
+// import Jumplines from './Jumplines';
 import TimelinePanel from './TimelinePanel';
 import {proSearchText, translatePOI} from './PPX';
 import mapStyleRaw from './assets/map_style.json?raw';
