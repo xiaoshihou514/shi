@@ -293,7 +293,7 @@ export default function DataVizMap(): React.ReactElement {
                     getText: (d) => `${d.code}: ${d.value.toFixed(2)}`,
                     getAlignmentBaseline: 'center',
                     getColor: (d) => {
-                        const { r, g, b, a } = hexToRgba(d.color, 230);
+                        const [ r, g, b, a ] = hexToRgba(d.color, 230);
                         // Invert the RGB channels (255 - value)
                         return [255 - r, 255 - g, 255 - b, a];
                     },
