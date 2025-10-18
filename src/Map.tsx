@@ -9,6 +9,8 @@ import TimelinePanel from './TimelinePanel';
 import {proSearchText, findCityWithPPX} from './PPX';
 import mapStyleRaw from './assets/map_style.json?raw';
 import Jumplines from './Jumplines';
+import SearchBar from './SearchBar';
+import type { Map as MaplibreMap } from 'maplibre-gl';
 
 type ClickedCoord = {
     lat: number;
@@ -33,6 +35,7 @@ export default function ClickableMap(): React.ReactElement {
     const [ppxError, setPpxError] = useState<string | null>(null);
     const [jumplineMode, setJumplineMode] = useState<boolean>(false);
     const suppressClickUntilRef = useRef<number>(0);
+    const mapRef = useRef<MaplibreMap | null>(null);
     // removed translate overlay/JSON; unified findCityWithPPX provides English output
 
 
@@ -258,6 +261,7 @@ export default function ClickableMap(): React.ReactElement {
                   mapStyle={MAP_STYLE}
                 onClick={onMapClick}
                 onDblClick={onMapDblClick}
+                onLoad={(ev) => { try { mapRef.current = (ev as unknown as { target?: MaplibreMap | null }).target ?? null; } catch { /* no-op */ } }}
             >
                 {jumplineMode && clicked && (
                     <Jumplines
@@ -287,6 +291,14 @@ export default function ClickableMap(): React.ReactElement {
                     </Marker>
                 )}
             </MLMap>
+            <div style={{position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 10}}>
+                <SearchBar
+                    onLocate={(p) => {
+                        try { mapRef.current?.flyTo({ center: [p.lon, p.lat], zoom: 6.5, duration: 2000 }); } catch { /* no-op */ }
+                        handleCitySelection(p.lat, p.lon);
+                    }}
+                />
+            </div>
             {/* translateJson overlay removed: unified findCityWithPPX ensures English output */}
         </div>
     );
