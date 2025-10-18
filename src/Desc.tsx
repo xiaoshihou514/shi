@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { normalSearchText, translatePOI } from './PPX';
+import { normalSearchText } from './PPX';
 import './Desc.css';
 
 type ClickedCoord = {
@@ -10,41 +10,33 @@ type ClickedCoord = {
 type DescProps = {
     clicked: ClickedCoord | null;
     city: string | null;
+    cityEnglish?: string | null;
     ppxLoading: boolean;
     ppxError: string | null;
     onClose?: () => void;
 };
 
 export default function Desc(props: DescProps): React.ReactElement {
-    const { clicked, city, ppxLoading, ppxError, onClose } = props;
+    const { clicked, city, cityEnglish, ppxLoading, ppxError, onClose } = props;
 
     const [descText, setDescText] = useState<string | null>(null);
     const [descLoading, setDescLoading] = useState<boolean>(false);
     const [descError, setDescError] = useState<string | null>(null);
     const descAbortRef = useRef<AbortController | null>(null);
 
-    const fetchDescription = useCallback(async (currentCity: string, externalCtrl?: AbortController) => {
+    const fetchDescription = useCallback(async (targetCity: string, externalCtrl?: AbortController) => {
         const ctrl = externalCtrl ?? new AbortController();
         descAbortRef.current = ctrl;
         setDescLoading(true);
         setDescError(null);
         setDescText(null);
         try {
-            let translatedName = currentCity;
-            try {
-                const { text: translatedText } = await translatePOI(currentCity);
-                if (translatedText?.trim()) {
-                    translatedName = translatedText.trim();
-                }
-            } catch (translationError) {
-                console.warn('City translation failed, using original name', translationError);
-            }
-            if (ctrl.signal.aborted) return;
-
             const prompt = [
-                `Generate a concise HTML snippet about the city of ${translatedName}.`,
+                `Generate a concise HTML snippet about the location ${targetCity}.`,
+                'Stay focused on the named location; only broaden the scope when the place itself lacks sufficient historical material.',
                 'Use semantic tags only (e.g., <p>, <strong>, <ul>, <li>).',
                 'Highlight history, geography, and notable facts in 2-3 brief paragraphs or a short list.',
+                'Any references must be inserted inline using <sup><a href="URL">[n]</a></sup> style, matching APA-like numbering. Do not append a separate references section.',
                 'Return HTML only without surrounding quotes.'
             ].join(' ');
             const { text } = await normalSearchText({ prompt, searchType: 'fast' });
@@ -62,25 +54,28 @@ export default function Desc(props: DescProps): React.ReactElement {
         descAbortRef.current?.abort();
         setDescText(null);
         setDescError(null);
-        if (!city) {
+        const normalizedCity = cityEnglish?.trim() || city?.trim();
+        if (!normalizedCity) {
             setDescLoading(false);
             return;
         }
         const ctrl = new AbortController();
-        fetchDescription(city, ctrl);
+        fetchDescription(normalizedCity, ctrl);
         return () => ctrl.abort();
-    }, [city, fetchDescription]);
+    }, [city, cityEnglish, fetchDescription]);
 
     const onRetry = useCallback(() => {
-        if (!city) return;
+        const normalizedCity = cityEnglish?.trim() || city?.trim();
+        if (!normalizedCity) return;
         descAbortRef.current?.abort();
         const ctrl = new AbortController();
-        fetchDescription(city, ctrl);
-    }, [city, fetchDescription]);
+        fetchDescription(normalizedCity, ctrl);
+    }, [city, cityEnglish, fetchDescription]);
 
     const formattedLat = clicked ? `${clicked.lat.toFixed(3)}°` : null;
     const formattedLon = clicked ? `${clicked.lon.toFixed(3)}°` : null;
-    const isCityKnown = Boolean(city);
+    const isCityKnown = Boolean(city || cityEnglish);
+    const displayCity = cityEnglish?.trim() || city || 'Locating city…';
 
     return (
         <div className="desc-overlay">
@@ -104,7 +99,7 @@ export default function Desc(props: DescProps): React.ReactElement {
                     </button>
                     <header className="desc-header">
                         <div className="desc-header__badge">Location Snapshot</div>
-                        <h2 className="desc-header__title">{city ?? 'Locating city…'}</h2>
+                        <h2 className="desc-header__title">{displayCity}</h2>
                         <div className="desc-header__meta">
                             {formattedLat && <span className="desc-header__meta-item">Lat {formattedLat}</span>}
                             {formattedLon && <span className="desc-header__meta-item">Lon {formattedLon}</span>}
