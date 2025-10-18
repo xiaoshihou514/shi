@@ -17,7 +17,7 @@
 [[redirects]]
   # Mirror Vite dev proxy: /geo/:cc/:level -> pinned GeoBoundaries file
   from = "/geo/:cc/:level"
-  to = "https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/:cc/:level/geoBoundaries-:cc-:level.geojson"
+  to = "https://github.com/wmgeolab/geoBoundaries/raw/9469f09/releaseData/gbOpen/:cc/:level/geoBoundaries-:cc-:level.geojson"
   status = 200
   force = true
 
