@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import Timeline, { type TimelineHandle } from './Timeline';
 import { normalSearchText } from './PPX';
+import './Desc.css';
 
 type ClickedCoord = {
     lat: number;
@@ -12,25 +12,10 @@ type DescProps = {
     city: string | null;
     ppxLoading: boolean;
     ppxError: string | null;
-    timelineRef: React.RefObject<TimelineHandle | null>;
-};
-
-const panelStyle: React.CSSProperties = {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    zIndex: 1,
-    background: 'rgba(255,255,255,0.9)',
-    padding: '10px 12px',
-    borderRadius: 8,
-    boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-    maxWidth: 640,
-    fontSize: 14,
-    lineHeight: 1.35
 };
 
 export default function Desc(props: DescProps): React.ReactElement {
-    const { clicked, city, ppxLoading, ppxError, timelineRef } = props;
+    const { clicked, city, ppxLoading, ppxError } = props;
 
     const [descText, setDescText] = useState<string | null>(null);
     const [descLoading, setDescLoading] = useState<boolean>(false);
@@ -78,37 +63,87 @@ export default function Desc(props: DescProps): React.ReactElement {
         const ctrl = new AbortController();
         fetchDescription(city, ctrl);
     }, [city, fetchDescription]);
+
+    const formattedLat = clicked ? `${clicked.lat.toFixed(3)}°` : null;
+    const formattedLon = clicked ? `${clicked.lon.toFixed(3)}°` : null;
+    const isCityKnown = Boolean(city);
+
     return (
-        <div style={panelStyle}>
-            {clicked ? (
-                <div>
-                    {city && (
-                        <div style={{ marginTop: 10 }}>
-                            <div style={{ fontWeight: 600, marginBottom: 6 }}>City: {city}</div>
-                            {!ppxLoading && ppxError && (
-                                <div style={{ color: '#c0392b' }}>Error: {ppxError}</div>
-                            )}
-                            <div style={{ marginTop: 10 }}>
-                                <div style={{ fontWeight: 600, marginBottom: 6 }}>Description</div>
-                                {descLoading && <div>Generating description…</div>}
-                                {!descLoading && descError && (
-                                    <div style={{ color: '#c0392b' }}>
-                                        Error: {descError}
-                                        <button style={{ marginLeft: 8 }} onClick={onRetry}>Retry</button>
-                                    </div>
-                                )}
-                                {!descLoading && !descError && descText && (
-                                    <div style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{descText}</div>
-                                )}
-                            </div>
-                            <div style={{ maxHeight: 320, overflow: 'auto', borderTop: '1px solid #eee', marginTop: 6, paddingTop: 6 }}>
-                                <Timeline ref={timelineRef} />
-                            </div>
-                        </div>
-                    )}
+        <div className="desc-overlay">
+            {!clicked ? (
+                <div className="desc-panel desc-panel--empty">
+                    <div className="desc-empty" aria-live="polite">
+                        <div className="desc-empty__icon" role="img" aria-label="Map hint">🗺️</div>
+                        <p className="desc-empty__title">Ready to explore?</p>
+                        <p className="desc-empty__text">Tap a location on the map to unlock a tailored briefing.</p>
+                    </div>
                 </div>
             ) : (
-                <div>Click anywhere on the map to select coordinates.</div>
+                <article className="desc-panel desc-panel--full" aria-live="polite">
+                    <header className="desc-header">
+                        <div className="desc-header__badge">Location Snapshot</div>
+                        <h2 className="desc-header__title">{city ?? 'Locating city…'}</h2>
+                        <div className="desc-header__meta">
+                            {formattedLat && <span className="desc-header__meta-item">Lat {formattedLat}</span>}
+                            {formattedLon && <span className="desc-header__meta-item">Lon {formattedLon}</span>}
+                        </div>
+                        <div className="desc-header__status">
+                            {ppxLoading && (
+                                <span className="desc-pill desc-pill--loading">Curating timeline…</span>
+                            )}
+                            {!ppxLoading && ppxError && (
+                                <span className="desc-pill desc-pill--error" role="alert">
+                                    Timeline unavailable: {ppxError}
+                                </span>
+                            )}
+                        </div>
+                    </header>
+
+                    <div className="desc-body">
+                        <section className="desc-overview">
+                            <div className="desc-overview__header">
+                                <h3>City Overview</h3>
+                                {isCityKnown && (
+                                    <p>A rapid briefing covering history, geography, and standout details.</p>
+                                )}
+                            </div>
+                            <div className="desc-overview__body">
+                                {descLoading && (
+                                    <div className="desc-skeleton-group" aria-hidden="true">
+                                        <span className="desc-skeleton desc-skeleton--wide" />
+                                        <span className="desc-skeleton desc-skeleton--medium" />
+                                        <span className="desc-skeleton desc-skeleton--short" />
+                                    </div>
+                                )}
+
+                                {!descLoading && descError && (
+                                    <div className="desc-error" role="alert">
+                                        <p>We couldn&apos;t fetch the briefing: {descError}</p>
+                                        <button type="button" className="desc-button" onClick={onRetry}>
+                                            Try again
+                                        </button>
+                                    </div>
+                                )}
+
+                                {!descLoading && !descError && descText && (
+                                    <p className="desc-body__text">{descText}</p>
+                                )}
+
+                                {!descLoading && !descError && !descText && isCityKnown && (
+                                    <p className="desc-body__placeholder">
+                                        No overview is available right now. Try selecting a nearby city.
+                                    </p>
+                                )}
+
+                                {!isCityKnown && (
+                                    <p className="desc-body__placeholder">
+                                        Identifying the nearest metropolitan area…
+                                    </p>
+                                )}
+                            </div>
+                        </section>
+                    </div>
+                </article>
             )}
         </div>
     );

@@ -1,5 +1,6 @@
 // A timeline widget, showcasing major events that happened in the area. Best to be streaming, with info gradually filling it up
 import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import type { CSSProperties } from 'react';
 import './Timeline.css';
 
 // Event type definitions
@@ -105,56 +106,94 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
     }, [events]);
 
     // Format date display
-    const formatDate = (dateString: string): string => {
+    const getDateParts = (dateString: string) => {
         const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
+        if (Number.isNaN(date.getTime())) {
+            return {
+                label: dateString,
+                shortLabel: dateString,
+                yearLabel: '',
+                isoString: undefined as string | undefined
+            };
+        }
+
+        return {
+            label: date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            }),
+            shortLabel: date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric'
+            }),
+            yearLabel: String(date.getFullYear()),
+            isoString: date.toISOString()
+        };
     };
 
     return (
         <div className={`timeline-container ${className}`} ref={timelineRef}>
             <div className={`timeline ${hasEvents ? 'has-events' : ''}`}>
-                {events.map((event, index) => {
+                {events.map((event) => {
                     const isVisible = visibleEvents.has(event.id);
-                    const isEven = index % 2 === 0;
+                    const accentColor = event.color || 'var(--timeline-accent)';
+                    const eventStyle = {
+                        '--event-accent': accentColor
+                    } as CSSProperties;
+
+                    const dateParts = getDateParts(event.date);
 
                     return (
                         <div
                             key={event.id}
                             data-event-id={event.id}
-                            className={`timeline-event ${isEven ? 'left' : 'right'} ${
-                                isVisible ? 'visible' : ''
-                            }`}
+                            className={`timeline-event ${isVisible ? 'visible' : ''}`}
+                            style={eventStyle}
                         >
-                            <div className="timeline-content">
-                                <div
-                                    className="timeline-icon"
-                                    style={{
-                                        backgroundColor: event.color || 'var(--accent-color)',
-                                        boxShadow: `0 0 20px ${event.color || 'var(--accent-color)'}40`
-                                    }}
+                            <div className="timeline-event__time" aria-hidden={!dateParts.yearLabel && !dateParts.shortLabel}>
+                                {dateParts.yearLabel && (
+                                    <span className="timeline-event__time-year">{dateParts.yearLabel}</span>
+                                )}
+                                <time
+                                    className="timeline-event__time-date"
+                                    dateTime={dateParts.isoString}
+                                    suppressHydrationWarning
                                 >
-                                    {event.icon || '✨'}
+                                    {dateParts.shortLabel}
+                                </time>
+                            </div>
+
+                            <div className="timeline-event__marker" aria-hidden="true">
+                                <span className="timeline-event__node">
+                                    <span className="timeline-event__icon">
+                                        {event.icon || '✨'}
+                                    </span>
+                                </span>
+                            </div>
+
+                            <div className="timeline-event__content">
+                                <div className="timeline-event__content-header">
+                                    <time
+                                        className="timeline-event__content-date"
+                                        dateTime={dateParts.isoString}
+                                        suppressHydrationWarning
+                                    >
+                                        {dateParts.label}
+                                    </time>
                                 </div>
 
-                                <div className="timeline-date">
-                                    {formatDate(event.date)}
-                                </div>
-
-                                <div className="timeline-title">
+                                <div className="timeline-event__title">
                                     {event.title}
                                 </div>
 
-                                <div className="timeline-description">
+                                <div className="timeline-event__description">
                                     {event.description}
                                 </div>
 
                                 {onEventClick && (
                                     <button
-                                        className="timeline-button"
+                                        className="timeline-event__cta"
                                         onClick={() => onEventClick(event)}
                                     >
                                         Explore
@@ -169,7 +208,6 @@ const Timeline = forwardRef<TimelineHandle, TimelineProps>(({
                     <div className="timeline-empty">
                         <div className="empty-icon">🌌</div>
                         <div className="empty-text">Timeline is being initialized...</div>
-                        <div className="empty-subtext">Events will appear here soon</div>
                     </div>
                 )}
             </div>

@@ -4,6 +4,7 @@ import {Map as MLMap, Marker, NavigationControl} from '@vis.gl/react-maplibre';
 import type {MapLayerMouseEvent} from 'maplibre-gl';
 import type { TimelineEvent, TimelineHandle } from './Timeline';
 import Desc from './Desc';
+import TimelinePanel from './TimelinePanel';
 import {proSearchText} from './PPX';
 
 type ClickedCoord = {
@@ -145,6 +146,12 @@ export default function ClickableMap(): React.ReactElement {
     return (
         <div style={{position: 'relative', width: '100wh', height: '100vh'}}>
             <Desc
+                clicked={clicked}
+                city={city}
+                ppxLoading={ppxLoading}
+                ppxError={ppxError}
+            />
+            <TimelinePanel
                 clicked={clicked}
                 city={city}
                 ppxLoading={ppxLoading}
