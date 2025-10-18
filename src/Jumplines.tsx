@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {useControl, useMap} from '@vis.gl/react-maplibre';
+import {useControl, useMap, Marker, Popup} from '@vis.gl/react-maplibre';
 import {MapboxOverlay} from '@deck.gl/mapbox';
 import {TripsLayer} from '@deck.gl/geo-layers';
 import {ScatterplotLayer, TextLayer, ArcLayer} from '@deck.gl/layers';
@@ -20,6 +20,7 @@ type JumpDatum = {
     name: string;
     category: string;
     target: [number, number];
+    reason?: string;
 };
 
 type Props = {
@@ -42,6 +43,8 @@ export default function Jumplines(props: Props): React.ReactElement | null {
     const [jumps, setJumps] = useState<JumpDatum[]>([]);
     const [time, setTime] = useState(0);
     const abortRef = useRef<AbortController | null>(null);
+    const [autoZoomActive, setAutoZoomActive] = useState<boolean>(autoZoom);
+    const [selected, setSelected] = useState<JumpDatum | null>(null);
     // removed translate overlay/JSON; unified findCityWithPPX provides English output
 
     const colorByCategory = useCallback((c?: string): [number, number, number] => {
@@ -119,8 +122,8 @@ export default function Jumplines(props: Props): React.ReactElement | null {
 
                 // Prompt for related cities
                 const prompt = [
-                    `List 6-10 cities related to ${baseName} via history, culture, or notable facts.`,
-                    'Return a STRICT JSON array only. Each item: {"name": string, "reason": string, "category": "historical"|"cultural"|"facts"}',
+                    `List 5 cities related to ${baseName} via history, culture, or notable facts.`,
+                    `Return a STRICT JSON array only. Each item must be: {"name": "City, Region, Country", "reason": "Brief 1-2 sentence connection to ${baseName}", "category": "historical"|"cultural"|"facts"}`,
                 ].join('\n');
                 const { text } = await normalSearchText({ prompt, searchType: 'fast' });
                 if (ctrl.signal.aborted) return;
@@ -139,11 +142,12 @@ export default function Jumplines(props: Props): React.ReactElement | null {
                         const item = queue[i]!;
                         const pos = await geocodeCity(item.name, ctrl.signal);
                         if (ctrl.signal.aborted) return;
-                        if (pos) out.push({ name: item.name, category: item.category ?? 'facts', target: pos });
+                        if (pos) out.push({ name: item.name, category: item.category ?? 'facts', target: pos, reason: item.reason });
                     }
                 }));
 
                 if (!ctrl.signal.aborted) setJumps(out);
+                setSelected(null);
             } catch (e) {
                 if (ctrl.signal.aborted) return;
                 // Swallow errors; overlay will remain empty
@@ -224,8 +228,10 @@ export default function Jumplines(props: Props): React.ReactElement | null {
             getText: (d: JumpDatum) => d.name,
             getSize: 14,
             getColor: [255, 255, 255],
-            getTextAnchor: 'start',
-            getAlignmentBaseline: 'center',
+            // place label above the marker to avoid overlap
+            getTextAnchor: 'middle',
+            getAlignmentBaseline: 'bottom',
+            getPixelOffset: [0, -10],
         }));
 
         const fitAll = () => {
@@ -249,6 +255,7 @@ export default function Jumplines(props: Props): React.ReactElement | null {
             pickable: true,
             onHover: (info: {object?: JumpDatum | null}) => {
                 const j = info?.object ?? undefined;
+                if (!autoZoomActive) return;
                 if (j) {
                     try { mapRef?.getMap()?.flyTo({ center: j.target as [number, number], zoom: 5.5, duration: 900 }); } catch { /* no-op */ }
                 } else {
@@ -259,14 +266,67 @@ export default function Jumplines(props: Props): React.ReactElement | null {
 
         overlay.setProps({layers});
 
-        if (autoZoom && origin && jumps.length) {
+        if (autoZoom && autoZoomActive && origin && jumps.length) {
             fitAll();
         }
 
         return () => overlay.setProps({layers: []});
-    }, [jumps, origin, time, overlay, mapRef, autoZoom, colorByCategory, pathWithTimestamps]);
+    }, [jumps, origin, time, overlay, mapRef, autoZoom, autoZoomActive, colorByCategory, pathWithTimestamps]);
 
-    return null;
+    // Stop auto-zooming once the user manually zooms the map
+    useEffect(() => {
+        const map = mapRef?.getMap();
+        if (!map) return;
+        const onZoomStart = (e: unknown) => {
+            const evt = e as { originalEvent?: unknown };
+            if (evt && evt.originalEvent) {
+                setAutoZoomActive(false);
+            }
+        };
+        map.on('zoomstart', onZoomStart);
+        return () => {
+            map.off('zoomstart', onZoomStart);
+        };
+    }, [mapRef]);
+
+    // Render destination markers; origin marker is owned by Map.tsx
+    return (
+        <>
+            {jumps.map((j) => (
+                <Marker key={`${j.name}-${j.target[0]}-${j.target[1]}`} longitude={j.target[0]} latitude={j.target[1]} anchor="center">
+                    <div
+                        style={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: '50%',
+                            background: '#f97316',
+                            border: '2px solid white',
+                            boxShadow: '0 0 12px rgba(249, 115, 22, 0.8)'
+                        }}
+                        onClick={(ev) => {
+                            ev.stopPropagation();
+                            setSelected(j);
+                        }}
+                        title={j.name}
+                    />
+                </Marker>
+            ))}
+            {selected && (
+                <Popup
+                    longitude={selected.target[0]}
+                    latitude={selected.target[1]}
+                    closeButton
+                    onClose={() => setSelected(null)}
+                    anchor="bottom"
+                >
+                    <div style={{maxWidth: 260, fontSize: 12, lineHeight: 1.4}} onClick={(e) => e.stopPropagation()}>
+                        <div style={{fontWeight: 600, marginBottom: 4}}>{selected.name}</div>
+                        <div>{selected.reason ?? 'Related via historical or cultural ties.'}</div>
+                    </div>
+                </Popup>
+            )}
+        </>
+    );
 }
 
 

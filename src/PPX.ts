@@ -169,7 +169,7 @@ export async function findCityWithPPX(params: {
         const prompt = [
             'Task: Extract the best city-level name for the given location input and output it in English (en).',
             'Rules:',
-            '- Prefer city/town/municipality/district-level entities over states or countries.',
+            '- Prefer city-level entities over states or countries.',
             '- If input is already English, keep it; otherwise translate to English.',
             '- Avoid street-level details; keep names concise (<= 2 comma-separated parts).',
             'Return STRICT JSON only in the form: {"city": string, "detailedName": string}.',
