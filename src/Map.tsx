@@ -288,9 +288,9 @@ export default function ClickableMap(): React.ReactElement {
                   mapStyle={MAP_STYLE}
                 onClick={onMapClick}
             >
-                {city && clicked && (
-                    <Jumplines origin={clicked} cityName={city} autoZoom />
-                )}
+                {/*{city && clicked && (*/}
+                {/*    <Jumplines origin={clicked} cityName={city} autoZoom />*/}
+                {/*)}*/}
                 {clicked && (
                     <Marker longitude={clicked.lon} latitude={clicked.lat} anchor="center">
                         <div

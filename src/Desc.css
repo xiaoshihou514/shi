@@ -68,7 +68,7 @@
     align-items: center;
     text-align: center;
     padding-block: 36px;
-    height: calc(100dvh - 16px);
+    height: fit-content;
 }
 
 .desc-empty__icon {
