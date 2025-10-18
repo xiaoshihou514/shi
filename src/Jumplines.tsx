@@ -298,12 +298,33 @@ export default function Jumplines(props: Props): React.ReactElement | null {
             getPixelOffset: [0, -10],
         }));
 
+        const travelDurationForDistance = (distanceKm: number) => {
+            const minDuration = 80;
+            const maxDuration = 225;
+            const base = Number.isFinite(distanceKm) ? distanceKm : 0;
+            const normalized = Math.min(base / 20000, 1);
+            return Math.round(minDuration + (maxDuration - minDuration) * normalized);
+        };
+
         const fitAll = () => {
             if (!origin || !jumps.length) return;
             try {
                 const bounds = new maplibregl.LngLatBounds([origin.lon, origin.lat], [origin.lon, origin.lat]);
-                for (const j of jumps) bounds.extend(j.target as [number, number]);
-                mapRef?.getMap()?.fitBounds(bounds, { padding: 80, duration: 1200 });
+                let maxDistanceKm = 0;
+                for (const j of jumps) {
+                    const target = j.target as [number, number];
+                    bounds.extend(target);
+                    const dist = turf.distance(
+                        turf.point([origin.lon, origin.lat]),
+                        turf.point(target),
+                        {units: 'kilometers'}
+                    );
+                    if (isFinite(dist)) {
+                        maxDistanceKm = Math.max(maxDistanceKm, dist);
+                    }
+                }
+                const duration = travelDurationForDistance(maxDistanceKm);
+                mapRef?.getMap()?.fitBounds(bounds, { padding: 80, duration });
             } catch { /* no-op fit */ }
         };
 
@@ -321,7 +342,19 @@ export default function Jumplines(props: Props): React.ReactElement | null {
                 const j = info?.object ?? undefined;
                 if (!autoZoomActive) return;
                 if (j) {
-                    try { mapRef?.getMap()?.flyTo({ center: j.target as [number, number], zoom: 5.5, duration: 900 }); } catch { /* no-op */ }
+                    try {
+                        const distanceKm = turf.distance(
+                            turf.point([origin.lon, origin.lat]),
+                            turf.point(j.target as [number, number]),
+                            {units: 'kilometers'}
+                        );
+                        const duration = travelDurationForDistance(distanceKm);
+                        mapRef?.getMap()?.flyTo({
+                            center: j.target as [number, number],
+                            zoom: 5.5,
+                            duration
+                        });
+                    } catch { /* no-op */ }
                 } else {
                     fitAll();
                 }
