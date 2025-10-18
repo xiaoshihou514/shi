@@ -1,0 +1,17 @@
+[build]
+  command = "vite build"
+  publish = "dist"
+
+[[redirects]]
+  from = "/api/ppx/chat"
+  to = "/.netlify/functions/ppx-chat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/ppx/media"
+  to = "/.netlify/functions/ppx-media"
+  status = 200
+  force = true
+
+
