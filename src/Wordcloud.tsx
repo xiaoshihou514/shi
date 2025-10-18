@@ -113,9 +113,64 @@ const buildPrompt = (city: string): string => [
 ].join('\n');
 
 const LoadingSkeleton = () => (
-  <div style={{position: 'absolute', inset: 0, display: 'grid', placeItems: 'center'}}>
-    <div style={{width: 120, height: 12, borderRadius: 6, background: 'linear-gradient(90deg,#eee,#f6f6f6,#eee)', backgroundSize: '200% 100%', animation: 'shimmer 1.2s infinite'}} />
-    <style>{`@keyframes shimmer {0%{background-position:0 0}100%{background-position:200% 0}}`}</style>
+  <div
+    style={{
+      position: 'absolute',
+      inset: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 16,
+      zIndex: 2,
+    }}
+  >
+    <div style={{ position: 'relative', width: 92, height: 92 }}>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          borderRadius: '50%',
+          border: '3px solid rgba(124, 92, 255, 0.35)',
+          borderTopColor: '#a78bfa',
+          borderRightColor: '#38bdf8',
+          animation: 'wcSpin 1.15s linear infinite',
+          boxShadow: '0 0 18px rgba(124, 92, 255, 0.45)',
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          inset: 14,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.55), rgba(124,92,255,0) 65%)',
+          animation: 'wcPulse 1.4s ease-in-out infinite',
+        }}
+      />
+    </div>
+    <div
+      style={{
+        fontSize: 12,
+        letterSpacing: '0.22em',
+        textTransform: 'uppercase',
+        color: '#cbd5ff',
+        opacity: 0.8,
+      }}
+    >
+      Generating keywords…
+    </div>
+    <style>
+      {`
+        @keyframes wcSpin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes wcPulse {
+          0%, 100% { transform: scale(0.92); opacity: 0.65; }
+          50% { transform: scale(1); opacity: 1; }
+        }
+      `}
+    </style>
   </div>
 );
 
@@ -319,5 +374,3 @@ const Wordcloud = forwardRef<WordcloudHandle, WordcloudProps>((props, ref) => {
 Wordcloud.displayName = 'Wordcloud';
 
 export default Wordcloud;
-
-

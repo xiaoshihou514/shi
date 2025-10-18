@@ -1,5 +1,6 @@
 import React from 'react';
 import Timeline, { type TimelineHandle } from './Timeline';
+import Wordcloud from './Wordcloud';
 import './TimelinePanel.css';
 
 type ClickedCoord = {
@@ -10,6 +11,7 @@ type ClickedCoord = {
 type TimelinePanelProps = {
     clicked: ClickedCoord | null;
     city: string | null;
+    cityEnglish?: string | null;
     ppxLoading: boolean;
     ppxError: string | null;
     timelineRef: React.RefObject<TimelineHandle | null>;
@@ -17,12 +19,18 @@ type TimelinePanelProps = {
 };
 
 export default function TimelinePanel(props: TimelinePanelProps): React.ReactElement {
-    const { clicked, city, ppxLoading, ppxError, timelineRef, onClose } = props;
+    const { clicked, city, cityEnglish, ppxLoading, ppxError, timelineRef, onClose } = props;
     const hasSelection = Boolean(clicked);
-    const hasCity = Boolean(city);
+    const displayCity = cityEnglish?.trim() || city?.trim() || '';
+    const hasCity = Boolean(displayCity);
+    const [activeView, setActiveView] = React.useState<'timeline' | 'wordcloud'>('timeline');
+
+    React.useEffect(() => {
+        setActiveView('timeline');
+    }, [displayCity]);
 
     if (!hasSelection) {
-        return <div></div>; // not null so that the types match
+        return <></>;
     }
 
     return (
@@ -39,7 +47,7 @@ export default function TimelinePanel(props: TimelinePanelProps): React.ReactEle
                     </button>
                     <div className="timeline-panel__badge">Historical Timeline</div>
                     <h2 className="timeline-panel__title">
-                        {city ? `Key moments in ${city}` : 'Select a city to begin'}
+                        {hasCity ? `Key moments in ${displayCity}` : 'Select a city to begin'}
                     </h2>
                     <div className="timeline-panel__status">
                         {ppxLoading && (
@@ -54,28 +62,60 @@ export default function TimelinePanel(props: TimelinePanelProps): React.ReactEle
                 </header>
 
                 <div className="timeline-panel__body">
-                    {!hasSelection && (
-                        <div className="timeline-panel__placeholder">
-                            <div className="timeline-panel__placeholder-icon" role="img" aria-label="Timeline hint">
-                                🧭
-                            </div>
-                            <p className="timeline-panel__placeholder-title">No path plotted yet</p>
-                            <p className="timeline-panel__placeholder-text">
-                                Tap the map to generate a curated chronological journey for the selected location.
-                            </p>
-                        </div>
-                    )}
+                    <div className="timeline-panel__view-toggle" role="tablist" aria-label="Insight view">
+                        <button
+                            type="button"
+                            className={`timeline-panel__toggle ${activeView === 'timeline' ? 'is-active' : ''}`}
+                            onClick={() => setActiveView('timeline')}
+                            role="tab"
+                            aria-selected={activeView === 'timeline'}
+                        >
+                            Timeline
+                        </button>
+                        <button
+                            type="button"
+                            className={`timeline-panel__toggle ${activeView === 'wordcloud' ? 'is-active' : ''}`}
+                            onClick={() => setActiveView('wordcloud')}
+                            role="tab"
+                            aria-selected={activeView === 'wordcloud'}
+                            disabled={!hasCity}
+                        >
+                            Word Cloud
+                        </button>
+                    </div>
 
-                    {hasSelection && (
-                        <div className="timeline-panel__timeline">
-                            <Timeline ref={timelineRef} className="timeline-compact timeline-panel__timeline-inner" />
-                            {!ppxLoading && !ppxError && !hasCity && (
-                                <div className="timeline-panel__notice">
-                                    Identifying the nearest city; events will populate shortly.
-                                </div>
-                            )}
-                        </div>
-                    )}
+                    <div className="timeline-panel__content">
+                        {activeView === 'timeline' ? (
+                            <div className="timeline-panel__timeline">
+                                <Timeline ref={timelineRef} className="timeline-compact timeline-panel__timeline-inner" />
+                                {!ppxLoading && !ppxError && !hasCity && (
+                                    <div className="timeline-panel__notice">
+                                        Identifying the nearest locale; events will populate shortly.
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="timeline-panel__wordcloud">
+                                {hasCity ? (
+                                    <Wordcloud
+                                        city={displayCity}
+                                        className="timeline-panel__wordcloud-inner"
+                                        style={{ height: '100%', background: 'transparent' }}
+                                    />
+                                ) : (
+                                    <div className="timeline-panel__placeholder">
+                                        <div className="timeline-panel__placeholder-icon" role="img" aria-label="Word cloud hint">
+                                            ☁️
+                                        </div>
+                                        <p className="timeline-panel__placeholder-title">Word cloud unavailable</p>
+                                        <p className="timeline-panel__placeholder-text">
+                                            Choose a location to surface distinctive themes and highlights.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </aside>

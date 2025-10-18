@@ -22,6 +22,8 @@
     flex-direction: column;
     gap: 20px;
     color: #f3f5ff;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .timeline-panel__close {
@@ -114,6 +116,54 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
+    gap: 16px;
+    overflow: hidden;
+}
+
+.timeline-panel__view-toggle {
+    align-self: flex-end;
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 999px;
+    background: rgba(12, 18, 38, 0.7);
+    border: 1px solid rgba(124, 92, 255, 0.25);
+    pointer-events: auto;
+}
+
+.timeline-panel__toggle {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: none;
+    background: transparent;
+    color: #e1e4ff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.timeline-panel__toggle.is-active {
+    background: rgba(124, 92, 255, 0.22);
+    color: #ffffff;
+}
+
+.timeline-panel__toggle:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.timeline-panel__content {
+    flex: 1 1 auto;
+    min-height: 0;
+    border-radius: 16px;
+    border: 1px solid rgba(124, 92, 255, 0.22);
+    padding: 16px;
+    display: flex;
+    position: relative;
+    overflow: hidden;
 }
 
 .timeline-panel__placeholder {
@@ -148,6 +198,7 @@
     position: relative;
     flex: 1 1 auto;
     min-height: 220px;
+    width: 100%;
     border-radius: 12px;
     overflow-y: auto;
     overflow-x: hidden;
@@ -185,6 +236,20 @@
 
 .timeline-panel__timeline::-webkit-scrollbar-track {
     background: transparent;
+}
+
+.timeline-panel__wordcloud {
+    flex: 1 1 auto;
+    min-height: 220px;
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
+}
+
+.timeline-panel__wordcloud-inner {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
 }
 
 @media (max-width: 920px) {
