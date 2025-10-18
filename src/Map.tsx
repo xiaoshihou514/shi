@@ -2,7 +2,8 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {Map as MLMap, Marker, NavigationControl} from '@vis.gl/react-maplibre';
 import type {MapLayerMouseEvent} from 'maplibre-gl';
-import Timeline, {type TimelineEvent, type TimelineHandle} from './Timeline';
+import type { TimelineEvent, TimelineHandle } from './Timeline';
+import Desc from './Desc';
 import {proSearchText} from './PPX';
 
 type ClickedCoord = {
@@ -13,30 +14,13 @@ type ClickedCoord = {
 // AAPTxy8BH1VEsoebNVZXo8HurFA-92mMnE3RJ1ZLRoF-uatVuLwCm5wx_yU_DxGrkq_qCiJXVRT-jtuZmY0_03jSRUz9Bgtq8pVwV6LTtplhae7cojeWzZm67Mgp3AhNZpB-SKjWKMGHP6rD79kyutlG6CUdlpU1k8NnETlRBKd9KVf5PABmv25F1bS-0qPSNSMQOlPc2qo_Edtdsn-7CK8QYK97dmTm6yxEX1DJfvjcjII.AT1_8nTjQFQT
 const MAP_STYLE = JSON.parse(await (await fetch("./src/assets/map_style.json")).text());
 
-const formatNumber = (n: number): string => n.toFixed(6);
-
-const panelStyle: React.CSSProperties = {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    zIndex: 1,
-    background: 'rgba(255,255,255,0.9)',
-    padding: '10px 12px',
-    borderRadius: 8,
-    boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-    maxWidth: 320,
-    fontSize: 14,
-    lineHeight: 1.35
-};
+// panel UI moved to Desc component
 
 export default function ClickableMap(): React.ReactElement {
     const [clicked, setClicked] = useState<ClickedCoord | null>(null);
-    const [loading, setLoading] = useState<boolean>(false);
-    const [address, setAddress] = useState<string | null>(null);
     const [city, setCity] = useState<string | null>(null);
-    const [error, setError] = useState<string | null>(null);
     const abortRef = useRef<AbortController | null>(null);
-    const timelineRef = useRef<TimelineHandle>(null);
+    const timelineRef = useRef<TimelineHandle | null>(null);
     const [ppxLoading, setPpxLoading] = useState<boolean>(false);
     const [ppxError, setPpxError] = useState<string | null>(null);
 
@@ -45,9 +29,6 @@ export default function ClickableMap(): React.ReactElement {
         abortRef.current?.abort();
         const ctrl = new AbortController();
         abortRef.current = ctrl;
-        setLoading(true);
-        setError(null);
-        setAddress(null);
         setCity(null);
         try {
             const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=en`;
@@ -57,18 +38,14 @@ export default function ClickableMap(): React.ReactElement {
             });
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const data = await resp.json();
-            const display: string | undefined = data?.display_name;
             const addr: Record<string, string> | undefined = data?.address;
             const detectedCity = addr?.city || addr?.town || addr?.village || addr?.county || addr?.state || null;
-            setAddress(display ?? null);
             setCity(detectedCity);
         } catch (err: unknown) {
             const anyErr = err as { name?: string; message?: string };
             if (anyErr?.name !== 'AbortError') {
-                setError(anyErr?.message ?? 'Reverse geocoding failed');
+                console.error(anyErr.message);
             }
-        } finally {
-            setLoading(false);
         }
     }, []);
 
@@ -167,40 +144,13 @@ export default function ClickableMap(): React.ReactElement {
 
     return (
         <div style={{position: 'relative', width: '100wh', height: '100vh'}}>
-            <div style={panelStyle}>
-                <div style={{ fontWeight: 600, marginBottom: 6 }}>Selection</div>
-                {clicked ? (
-                    <div>
-                        <div>Lat: {formatNumber(clicked.lat)}</div>
-                        <div>Lon: {formatNumber(clicked.lon)}</div>
-                        {loading && <div style={{ marginTop: 6 }}>Resolving address…</div>}
-                        {!loading && error && (
-                            <div style={{ marginTop: 6, color: '#c0392b' }}>Error: {error}</div>
-                        )}
-                        {!loading && !error && address && (
-                            <div style={{ marginTop: 6 }}>
-                                <div style={{ fontWeight: 600 }}>Address</div>
-                                <div>{address}</div>
-                                <div style={{ marginTop: 4 }}>City: {city ?? 'N/A'}</div>
-                            </div>
-                        )}
-                        {city && (
-                            <div style={{ marginTop: 10 }}>
-                                <div style={{ fontWeight: 600, marginBottom: 6 }}>Timeline for {city}</div>
-                                {ppxLoading && <div>Generating timeline…</div>}
-                                {!ppxLoading && ppxError && (
-                                    <div style={{ color: '#c0392b' }}>Error: {ppxError}</div>
-                                )}
-                                <div style={{ maxHeight: 320, overflow: 'auto', borderTop: '1px solid #eee', marginTop: 6, paddingTop: 6 }}>
-                                    <Timeline ref={timelineRef} />
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    <div>Click anywhere on the map to select coordinates.</div>
-                )}
-            </div>
+            <Desc
+                clicked={clicked}
+                city={city}
+                ppxLoading={ppxLoading}
+                ppxError={ppxError}
+                timelineRef={timelineRef}
+            />
 
             <MLMap
                 initialViewState={{
@@ -208,7 +158,7 @@ export default function ClickableMap(): React.ReactElement {
                     latitude: 40,
                     zoom: 3.5
                   }}
-                  style={{ width: 1920, height: 1081 }}
+                  style={{ width: '100vw', height: '100vh' }}
                   mapStyle={MAP_STYLE}
                 onClick={onMapClick}
             >
