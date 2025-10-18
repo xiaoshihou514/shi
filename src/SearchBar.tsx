@@ -149,26 +149,53 @@ export default function SearchBar(props: SearchBarProps): React.ReactElement {
       onMouseEnter={() => { hoverRef.current = true; setVisible(true); }}
       onMouseLeave={() => { hoverRef.current = false; }}
     >
-      <form onSubmit={onSubmit} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <input
-          ref={inputRef}
-          className="searchbar-input"
-          type="text"
-          placeholder="Search a city… (press / to focus)"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          disabled={busy}
-        />
-        <button type="submit" className="searchbar-btn" disabled={busy}>
-          Go
-        </button>
+      <form onSubmit={onSubmit} className="searchbar-form">
+        <div className="searchbar-control-group">
+          <button
+            type="button"
+            className="searchbar-btn searchbar-btn--secondary searchbar-btn--icon"
+            onClick={onShuffle}
+            disabled={busy}
+            aria-label="Random place"
+            title="Random place"
+          >
+            {busy
+              ? <span className="searchbar-spinner" />
+              : (
+                <svg viewBox="0 0 24 24" aria-hidden="true" className="searchbar-icon">
+                  <path d="M4 4h3.59l3.7 4.63a3 3 0 0 0 4.62 0L19 4h1v3h-1.6l-2.33 2.91a5 5 0 0 1-7.54 0L6.8 7H4V4zm0 16v-3h2.8l2.73-3.46a5 5 0 0 1 7.54 0L19 17h1v3h-3.59l-3.7-4.63a3 3 0 0 0-4.62 0L6 20H4zm13.24-6.34L21 7h-3.54l-3.06 3.87 2.84 2.79zM3 17h3.54l3.06-3.87-2.84-2.79L3 17z" />
+                </svg>
+              )}
+            <span className="visually-hidden">Random place</span>
+          </button>
+          <input
+            ref={inputRef}
+            className="searchbar-input"
+            type="text"
+            placeholder="/ Search"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            disabled={busy}
+          />
+          <button
+            type="submit"
+            className="searchbar-btn searchbar-btn--primary searchbar-btn--icon"
+            disabled={busy}
+            aria-label="Search"
+            title="Search"
+          >
+            {busy
+              ? <span className="searchbar-spinner" />
+              : (
+                <svg viewBox="0 0 24 24" aria-hidden="true" className="searchbar-icon">
+                  <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.71.71l.27.28v.79L20 20.49 21.49 19l-5.99-5zM10 14a4 4 0 1 1 0-8 4 4 0 0 1 0 8z" />
+                </svg>
+              )}
+            <span className="visually-hidden">Search</span>
+          </button>
+        </div>
       </form>
-      <button type="button" className="searchbar-btn" onClick={onShuffle} disabled={busy}>
-        {busy ? <span className="searchbar-spinner" /> : 'Shuffle'}
-      </button>
       {error && <span className="searchbar-error">{error}</span>}
     </div>
   );
 }
-
-
