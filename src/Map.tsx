@@ -25,68 +25,76 @@ const MAP_STYLE = JSON.parse(mapStyleRaw) as StyleSpecification;
 // panel UI moved to Desc component
 
 export default function ClickableMap(): React.ReactElement {
-  const [clicked, setClicked] = useState<ClickedCoord | null>(null);
-  const [cityName, setCityName] = useState<string | null>(null);
-  const [cityDetailedName, setCityDetailedName] = useState<string | null>(null);
-  const [showDesc, setShowDesc] = useState<boolean>(true);
-  const [showTimeline, setShowTimeline] = useState<boolean>(true);
-  const abortRef = useRef<AbortController | null>(null);
-  const timelineRef = useRef<TimelineHandle | null>(null);
-  const [ppxLoading, setPpxLoading] = useState<boolean>(false);
-  const [ppxError, setPpxError] = useState<string | null>(null);
-  const [jumplineMode, setJumplineMode] = useState<boolean>(false);
-  const suppressClickUntilRef = useRef<number>(0);
-  const mapRef = useRef<MaplibreMap | null>(null);
-  // removed translate overlay/JSON; unified findCityWithPPX provides English output
+    const [clicked, setClicked] = useState<ClickedCoord | null>(null);
+    const [cityName, setCityName] = useState<string | null>(null);
+    const [cityDetailedName, setCityDetailedName] = useState<string | null>(null);
+    const [showDesc, setShowDesc] = useState<boolean>(true);
+    const [showTimeline, setShowTimeline] = useState<boolean>(true);
+    const abortRef = useRef<AbortController | null>(null);
+    const timelineRef = useRef<TimelineHandle | null>(null);
+    const [ppxLoading, setPpxLoading] = useState<boolean>(false);
+    const [ppxError, setPpxError] = useState<string | null>(null);
+    const [jumplineMode, setJumplineMode] = useState<boolean>(false);
+    const suppressClickUntilRef = useRef<number>(0);
+    const mapRef = useRef<MaplibreMap | null>(null);
+    // removed translate overlay/JSON; unified findCityWithPPX provides English output
 
-  const reverseGeocode = useCallback(async (lat: number, lon: number) => {
-    abortRef.current?.abort();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-    setCityName(null);
-    setCityDetailedName(null);
-    try {
-      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=en`;
-      const resp = await fetch(url, {
-        signal: ctrl.signal,
-        headers: { Accept: "application/json" },
-      });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      // TODO: resp can be { "error": "<error msg>" }
-      const data = await resp.json();
-      const addr: Record<string, string> | undefined = data?.address;
-      const displayName =
-        typeof data?.display_name === "string" ? data.display_name : null;
-      const ppxCity = await findCityWithPPX({
-        displayName,
-        address: addr ?? null,
-      });
-      const cityNameVal = ppxCity?.city ?? null;
-      const cityDetailedNameVal = ppxCity?.detailedName ?? null;
-      if (!ctrl.signal.aborted) {
-        setCityName(cityNameVal);
-        setCityDetailedName(cityDetailedNameVal);
-      }
-    } catch (err: unknown) {
-      const anyErr = err as { name?: string; message?: string };
-      if (anyErr?.name !== "AbortError") {
-        console.error(anyErr.message);
-      }
-    }
-  }, []);
 
-  const exitToIdle = useCallback(() => {
-    setJumplineMode(false);
-    setClicked(null);
-    setCityName(null);
-    setCityDetailedName(null);
-    setShowDesc(false);
-    setShowTimeline(false);
-    timelineRef.current?.clearEvents();
-    setPpxLoading(false);
-    setPpxError(null);
-    abortRef.current?.abort();
-  }, []);
+    const exitToIdle = useCallback(() => {
+        setJumplineMode(false);
+        setClicked(null);
+        setCityName(null);
+        setCityDetailedName(null);
+        setShowDesc(false);
+        setShowTimeline(false);
+        timelineRef.current?.clearEvents();
+        setPpxLoading(false);
+        setPpxError(null);
+        abortRef.current?.abort();
+    }, []);
+
+    const reverseGeocode = useCallback(async (lat: number, lon: number) => {
+        abortRef.current?.abort();
+        const ctrl = new AbortController();
+        abortRef.current = ctrl;
+        setCityName(null);
+        setCityDetailedName(null);
+        try {
+            const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=en`;
+            const resp = await fetch(url, {
+                signal: ctrl.signal,
+                headers: {'Accept': 'application/json'}
+            });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = await resp.json();
+            const potentialError = (data as { error?: unknown })?.error;
+            if (typeof potentialError === 'string' && potentialError.trim()) {
+                throw new Error(`Reverse geocoding error: ${potentialError}`);
+            }
+            const addr: Record<string, string> | undefined = data?.address;
+            const displayName = typeof data?.display_name === 'string' ? data.display_name : null;
+            const ppxCity = await findCityWithPPX({displayName, address: addr ?? null});
+            const cityNameVal = ppxCity?.city ?? null;
+            const cityDetailedNameVal = ppxCity?.detailedName ?? null;
+            if (!ctrl.signal.aborted) {
+                setCityName(cityNameVal);
+                setCityDetailedName(cityDetailedNameVal);
+            }
+        } catch (err: unknown) {
+            const anyErr = err as { name?: string; message?: string };
+            if (anyErr?.name !== 'AbortError') {
+                console.error(anyErr.message);
+                // Surface error to user, then auto-return to idle after 2s
+                setPpxLoading(false);
+                setPpxError(anyErr?.message ?? 'Reverse geocoding failed');
+                setShowDesc(true);
+                setShowTimeline(true);
+                setTimeout(() => {
+                    exitToIdle();
+                }, 2000);
+            }
+        }
+    }, [exitToIdle]);
 
   const onMapClick = useCallback(
     (e: MapLayerMouseEvent) => {
