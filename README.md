@@ -1,5 +1,11 @@
 # SHI: Spatial Historical Intelligence
 
+|                                           Discovery                                           |                                           Connections                                           |
+| :-------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------: |
+| ![Discovery](https://github.com/user-attachments/assets/3dd1d519-c590-431e-a880-73fecfcb2965) | ![Connections](https://github.com/user-attachments/assets/2457c487-bd14-4368-99c7-208baf107eb4) |
+|                                        Celebrity paths                                        |                                       Data Visualization                                        |
+|  ![Celebp](https://github.com/user-attachments/assets/c1a9b115-4c59-4339-bc6d-38c3494a6662)   |   ![Dataviz](https://github.com/user-attachments/assets/0733ba25-7bde-4491-beea-39e2b8744673)   |
+
 **SHI** is an interactive, AI-driven map visualization platform that transforms the way people explore and understand the world.
 By simply clicking anywhere on the map, users can instantly learn about a location’s **history, culture, and significance**, powered by an integrated **AI search engine (Perplexity API)**.
 
