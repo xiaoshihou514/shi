@@ -191,7 +191,7 @@ export default function ClickableMap(): React.ReactElement {
                                 {!ppxLoading && ppxError && (
                                     <div style={{ color: '#c0392b' }}>Error: {ppxError}</div>
                                 )}
-                                <div style={{ maxHeight: 320, overflow: 'auto', borderTop: '1px solid #eee', marginTop: 6, paddingTop: 6 }}>
+                                <div style={{ maxHeight: "68vh", overflow: 'auto', borderTop: '1px solid #eee', marginTop: 6, paddingTop: 6 }}>
                                     <Timeline ref={timelineRef} />
                                 </div>
                             </div>
@@ -204,11 +204,11 @@ export default function ClickableMap(): React.ReactElement {
 
             <MLMap
                 initialViewState={{
-                    longitude: -100,
-                    latitude: 40,
+                    longitude: 10,
+                    latitude: 50,
                     zoom: 3.5
                   }}
-                  style={{ width: 1920, height: 1081 }}
+                  style={{ width: "100vw", height: "100vh" }}
                   mapStyle={MAP_STYLE}
                 onClick={onMapClick}
             >
