@@ -8,6 +8,7 @@ import Desc from './Desc';
 import TimelinePanel from './TimelinePanel';
 import {proSearchText, findCityWithPPX} from './PPX';
 import mapStyleRaw from './assets/map_style.json?raw';
+import Jumplines from './Jumplines';
 
 type ClickedCoord = {
     lat: number;
@@ -30,6 +31,8 @@ export default function ClickableMap(): React.ReactElement {
     const timelineRef = useRef<TimelineHandle | null>(null);
     const [ppxLoading, setPpxLoading] = useState<boolean>(false);
     const [ppxError, setPpxError] = useState<string | null>(null);
+    const [jumplineMode, setJumplineMode] = useState<boolean>(false);
+    const suppressClickUntilRef = useRef<number>(0);
     // removed translate overlay/JSON; unified findCityWithPPX provides English output
 
 
@@ -64,7 +67,22 @@ export default function ClickableMap(): React.ReactElement {
         }
     }, []);
 
+    const exitToIdle = useCallback(() => {
+        setJumplineMode(false);
+        setClicked(null);
+        setCityName(null);
+        setCityDetailedName(null);
+        setShowDesc(false);
+        setShowTimeline(false);
+        timelineRef.current?.clearEvents();
+        setPpxLoading(false);
+        setPpxError(null);
+        abortRef.current?.abort();
+    }, []);
+
     const onMapClick = useCallback((e: MapLayerMouseEvent) => {
+        if (jumplineMode) { exitToIdle(); return; }
+        if (Date.now() < suppressClickUntilRef.current) return;
         const {lng, lat} = e.lngLat ?? {};
         if (typeof lng === 'number' && typeof lat === 'number') {
             setClicked({lat, lon: lng});
@@ -72,6 +90,27 @@ export default function ClickableMap(): React.ReactElement {
             setShowTimeline(true);
             reverseGeocode(lat, lng);
         }
+    }, [reverseGeocode, jumplineMode, exitToIdle]);
+
+    const onMapDblClick = useCallback((e: MapLayerMouseEvent) => {
+        const {lng, lat} = e.lngLat ?? {};
+        if (typeof lng !== 'number' || typeof lat !== 'number') return;
+        suppressClickUntilRef.current = Date.now() + 350;
+        setJumplineMode(true);
+        setShowDesc(false);
+        setShowTimeline(false);
+        const coord = {lat, lon: lng};
+        setClicked(coord);
+        // still resolve city name so Jumplines can query connections
+        reverseGeocode(lat, lng);
+    }, [reverseGeocode]);
+
+    const handleCitySelection = useCallback((lat: number, lon: number) => {
+        setJumplineMode(false);
+        setClicked({lat, lon});
+        setShowDesc(true);
+        setShowTimeline(true);
+        reverseGeocode(lat, lon);
     }, [reverseGeocode]);
 
     const buildPrompt = useCallback((cityName: string, cityDetailedName: string) => {
@@ -132,7 +171,13 @@ export default function ClickableMap(): React.ReactElement {
     }, []);
 
     useEffect(() => {
-        
+        if (jumplineMode) {
+            timelineRef.current?.clearEvents();
+            setPpxLoading(false);
+            setPpxError(null);
+            return;
+        }
+
         if (!cityName || !cityDetailedName) {
             timelineRef.current?.clearEvents();
             setPpxLoading(false);
@@ -166,7 +211,17 @@ export default function ClickableMap(): React.ReactElement {
                 setPpxLoading(false);
             }
         })();
-    }, [cityName, cityDetailedName, buildPrompt, tryParseEvents]);
+    }, [cityName, cityDetailedName, buildPrompt, tryParseEvents, jumplineMode]);
+
+    useEffect(() => {
+        const onKey = (ev: KeyboardEvent) => {
+            if (ev.key === 'Escape' && jumplineMode) {
+                exitToIdle();
+            }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [jumplineMode, exitToIdle]);
 
     return (
         <div style={{position: 'relative', width: '100%', height: '100dvh'}}>
@@ -201,10 +256,15 @@ export default function ClickableMap(): React.ReactElement {
                   style={{ width: '100%', height: '100%' }}
                   mapStyle={MAP_STYLE}
                 onClick={onMapClick}
+                onDblClick={onMapDblClick}
             >
-                {/* {city && clicked && (
-                    <Jumplines origin={clicked} cityName={city} autoZoom />
-                )} */}
+                {jumplineMode && clicked && (
+                    <Jumplines
+                        origin={clicked}
+                        cityName={cityName}
+                        autoZoom
+                    />
+                )}
                 {clicked && (
                     <Marker longitude={clicked.lon} latitude={clicked.lat} anchor="center">
                         <div
@@ -215,6 +275,12 @@ export default function ClickableMap(): React.ReactElement {
                                 background: '#f97316',
                                 border: '2px solid white',
                                 boxShadow: '0 0 12px rgba(249, 115, 22, 0.8)'
+                            }}
+                            onClick={(ev) => {
+                                ev.stopPropagation();
+                                if (jumplineMode && clicked) {
+                                    handleCitySelection(clicked.lat, clicked.lon);
+                                }
                             }}
                         />
                     </Marker>
