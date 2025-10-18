@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { normalSearchText } from './PPX';
+import { normalSearchText, translatePOI } from './PPX';
 import './Desc.css';
 
 type ClickedCoord = {
@@ -29,9 +29,22 @@ export default function Desc(props: DescProps): React.ReactElement {
         setDescError(null);
         setDescText(null);
         try {
+            let translatedName = currentCity;
+            try {
+                const { text: translatedText } = await translatePOI(currentCity);
+                if (translatedText?.trim()) {
+                    translatedName = translatedText.trim();
+                }
+            } catch (translationError) {
+                console.warn('City translation failed, using original name', translationError);
+            }
+            if (ctrl.signal.aborted) return;
+
             const prompt = [
-                `Briefly describe the city of ${currentCity}.`,
-                'Focus on history, geography, and notable facts in 2-3 sentences.'
+                `Generate a concise HTML snippet about the city of ${translatedName}.`,
+                'Use semantic tags only (e.g., <p>, <strong>, <ul>, <li>).',
+                'Highlight history, geography, and notable facts in 2-3 brief paragraphs or a short list.',
+                'Return HTML only without surrounding quotes.'
             ].join(' ');
             const { text } = await normalSearchText({ prompt, searchType: 'fast' });
             if (!ctrl.signal.aborted) setDescText(text.trim());
@@ -126,7 +139,10 @@ export default function Desc(props: DescProps): React.ReactElement {
                                 )}
 
                                 {!descLoading && !descError && descText && (
-                                    <p className="desc-body__text">{descText}</p>
+                                    <div
+                                        className="desc-body__text"
+                                        dangerouslySetInnerHTML={{ __html: descText }}
+                                    />
                                 )}
 
                                 {!descLoading && !descError && !descText && isCityKnown && (

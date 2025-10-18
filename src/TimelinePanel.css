@@ -95,6 +95,10 @@
     text-align: center;
     padding: 40px 16px;
     color: #9aa1c9;
+    background: rgba(12, 18, 38, 0.92);
+    border: 1px solid rgba(124, 92, 255, 0.25);
+    border-radius: 16px;
+    box-shadow: 0 24px 48px rgba(8, 10, 24, 0.4);
 }
 
 .timeline-panel__placeholder-icon {

@@ -30,6 +30,7 @@
 
 .desc-panel--full {
     height: calc(100vh - 32px);
+    overflow-y: auto;
 }
 
 .desc-panel--empty {
@@ -170,7 +171,15 @@
     font-size: 1.05rem;
     line-height: 1.75;
     color: #f5f7ff;
-    white-space: pre-wrap;
+    white-space: normal;
+}
+
+.desc-body__text p {
+    margin: 0 0 10px;
+}
+
+.desc-body__text p:last-child {
+    margin-bottom: 0;
 }
 
 .desc-body__placeholder {

@@ -5,7 +5,7 @@ import type {MapLayerMouseEvent} from 'maplibre-gl';
 import type { TimelineEvent, TimelineHandle } from './Timeline';
 import Desc from './Desc';
 import TimelinePanel from './TimelinePanel';
-import {proSearchText} from './PPX';
+import {proSearchText, translatePOI} from './PPX';
 
 type ClickedCoord = {
     lat: number;
@@ -122,7 +122,17 @@ export default function ClickableMap(): React.ReactElement {
 
         (async () => {
             try {
-                const prompt = buildPrompt(city);
+                let normalizedCity = city;
+                try {
+                    const { text: translatedText } = await translatePOI(city);
+                    if (translatedText?.trim()) {
+                        normalizedCity = translatedText.trim();
+                    }
+                } catch (translationError) {
+                    console.warn('Timeline translation failed, using original name', translationError);
+                }
+
+                const prompt = buildPrompt(normalizedCity);
                 const {text} = await proSearchText({prompt, searchType: 'pro'});
                 const events = tryParseEvents(text);
                 if (events.length === 0) {
