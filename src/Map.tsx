@@ -46,6 +46,7 @@ export default function ClickableMap(): React.ReactElement {
                 headers: {'Accept': 'application/json'}
             });
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            // TODO: resp can be { "error": "<error msg>" }
             const data = await resp.json();
             const addr: Record<string, string> | undefined = data?.address;
             const displayName = typeof data?.display_name === 'string' ? data.display_name : null;

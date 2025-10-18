@@ -40,6 +40,7 @@ export type StreamProSearchParams = {
     // 'pro' enforces Pro Search; 'auto' lets the model decide; 'fast' is cheaper
     searchType?: 'pro' | 'auto' | 'fast'
     searchContextSize?: 'low' | 'medium' | 'high'
+    mediaResponse?: Record<string, unknown>
 }
 
 // Async generator that yields content tokens and metadata from Sonar Pro with Pro Search
@@ -70,10 +71,11 @@ export async function streamProSearchToCallbacks(params: StreamToCallbacksParams
 }
 
 // One-shot helper: returns the full text by concatenating streamed tokens
-export async function proSearchText(params: StreamProSearchParams): Promise<{
+export async function proSearchText(params: StreamProSearchParams & { signal?: AbortSignal }): Promise<{
     text: string
     usage: ProSearchStreamItem['usage']
     searchResults: ProSearchStreamItem['searchResults']
+    media: unknown
 }> {
     const {
         prompt,
@@ -82,6 +84,8 @@ export async function proSearchText(params: StreamProSearchParams): Promise<{
         temperature,
         searchType = 'pro',
         searchContextSize,
+        mediaResponse,
+        signal,
     } = params
 
     const payload = {
@@ -91,12 +95,14 @@ export async function proSearchText(params: StreamProSearchParams): Promise<{
         temperature,
         searchType,
         searchContextSize,
+        media_response: mediaResponse,
     }
 
     const resp = await fetch('/api/ppx/chat', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload),
+        signal,
     })
     if (!resp.ok) {
         const msg = await safeReadText(resp)
@@ -106,12 +112,46 @@ export async function proSearchText(params: StreamProSearchParams): Promise<{
         text?: string
         usage?: ProSearchStreamItem['usage']
         searchResults?: ProSearchStreamItem['searchResults']
+        media?: unknown
     }
     return {
         text: typeof data.text === 'string' ? data.text : '',
         usage: data.usage ?? null,
         searchResults: data.searchResults ?? null,
+        media: data.media ?? null,
     }
+}
+
+export type LocationMedia = {
+    url: string
+    caption?: string
+}
+
+export async function fetchLocationMedia(locationName: string, signal?: AbortSignal): Promise<LocationMedia[]> {
+    const prompt = `cityscape of ${locationName}`;
+
+    const resp = await fetch('/api/ppx/media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            prompt,
+            mediaOverrides: {
+                return_images: true,
+            },
+        }),
+        signal,
+    })
+
+    if (!resp.ok) {
+        const msg = await safeReadText(resp)
+        throw new Error(msg || `Media request failed: HTTP ${resp.status}`)
+    }
+
+    const result = await resp.json();
+    return (result.images as Array<{ image_url: string; title: string }>).map(e => ({
+        url: e.image_url,
+        caption: e.title,
+    }));
 }
 
 export async function findCityWithPPX(params: {
@@ -119,7 +159,7 @@ export async function findCityWithPPX(params: {
     address?: Record<string, string> | null
     name?: string | null
 }): Promise<{ city?: string; detailedName?: string } | null> {
-    const { displayName = null, address = null, name = null } = params ?? {};
+    const {displayName = null, address = null, name = null} = params ?? {};
     const payload = {
         display: typeof displayName === 'string' ? displayName : '',
         address: address ?? {},
@@ -139,14 +179,19 @@ export async function findCityWithPPX(params: {
             `input_display_name: ${payload.display}`,
             `input_address_json: ${JSON.stringify(payload.address)}`,
         ].join('\n');
-        const { text } = await normalSearchText({ prompt, searchType: 'fast' });
+        const {text} = await normalSearchText({prompt, searchType: 'fast'});
 
         const tryParseObject = (t: string): unknown => {
-            try { return JSON.parse(t); } catch {
+            try {
+                return JSON.parse(t);
+            } catch {
                 const first = t.indexOf('{');
                 const last = t.lastIndexOf('}');
                 if (first !== -1 && last !== -1 && last > first) {
-                    try { return JSON.parse(t.slice(first, last + 1)); } catch { /* no-op */ }
+                    try {
+                        return JSON.parse(t.slice(first, last + 1));
+                    } catch { /* no-op */
+                    }
                 }
                 return null;
             }
@@ -159,7 +204,10 @@ export async function findCityWithPPX(params: {
             if (typeof cityVal === 'string' && typeof detailedNameVal === 'string') {
                 const cityTrimmed = cityVal.trim();
                 const detailedNameTrimmed = detailedNameVal.trim();
-                if (cityTrimmed.length > 0 && detailedNameTrimmed.length > 0) return { city: cityTrimmed, detailedName: detailedNameTrimmed };
+                if (cityTrimmed.length > 0 && detailedNameTrimmed.length > 0) return {
+                    city: cityTrimmed,
+                    detailedName: detailedNameTrimmed
+                };
             }
         }
         return null;
@@ -168,7 +216,7 @@ export async function findCityWithPPX(params: {
     }
 }
 
-export async function normalSearchText(params: StreamProSearchParams): Promise<{
+export async function normalSearchText(params: StreamProSearchParams & { signal?: AbortSignal }): Promise<{
     text: string
     usage: ProSearchStreamItem['usage']
     searchResults: ProSearchStreamItem['searchResults']

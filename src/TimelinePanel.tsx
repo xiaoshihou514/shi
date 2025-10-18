@@ -21,8 +21,8 @@ type TimelinePanelProps = {
 export default function TimelinePanel(props: TimelinePanelProps): React.ReactElement | null {
     const { clicked, cityName, cityDetailedName, ppxLoading, ppxError, timelineRef, onClose } = props;
     const hasSelection = Boolean(clicked);
-    const hasCity = Boolean(cityName || cityDetailedName);
-    const displayCity = cityName ?? null;
+    const displayCity = (cityDetailedName ?? cityName ?? '').trim();
+    const hasCity = displayCity.length > 0;
     const [activeView, setActiveView] = React.useState<'timeline' | 'wordcloud'>('timeline');
     React.useEffect(() => {
         setActiveView('timeline');
@@ -46,7 +46,7 @@ export default function TimelinePanel(props: TimelinePanelProps): React.ReactEle
                     </button>
                     <div className="timeline-panel__badge">Historical Timeline</div>
                     <h2 className="timeline-panel__title">
-                        {displayCity ? `Key moments in ${displayCity}` : 'Select a city to begin'}
+                        {hasCity ? `Key moments in ${displayCity}` : 'Select a city to begin'}
                     </h2>
                     <div className="timeline-panel__status">
                         {ppxLoading && (
